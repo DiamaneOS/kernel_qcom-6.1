@@ -1499,6 +1499,16 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 			goto end;
 		}
 
+		mutex_lock(&(o_ctrl->read_buf_lock));
+		rc = cam_sensor_util_add_read_buf_to_list(&(o_ctrl->read_buf_list),
+			io_cfg->mem_handle[0]);
+		if (rc < 0) {
+			CAM_ERR(CAM_OIS, "Add read buf to list failed rc:%d", rc);
+			mutex_unlock(&(o_ctrl->read_buf_lock));
+			goto end;
+		}
+		mutex_unlock(&(o_ctrl->read_buf_lock));
+
 		rc = cam_sensor_util_get_current_qtimer_ns(&qtime_ns);
 		if (rc < 0) {
 			CAM_ERR(CAM_OIS, "failed to get qtimer rc:%d");
@@ -1834,6 +1844,9 @@ int cam_ois_driver_cmd(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 		goto release_mutex;
 	}
 release_mutex:
+	mutex_lock(&(o_ctrl->read_buf_lock));
+	cam_sensor_util_release_read_buf(&(o_ctrl->read_buf_list));
+	mutex_unlock(&(o_ctrl->read_buf_lock));
 	mutex_unlock(&(o_ctrl->ois_mutex));
 	return rc;
 }

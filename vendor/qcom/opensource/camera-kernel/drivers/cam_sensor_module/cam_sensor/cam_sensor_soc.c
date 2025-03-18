@@ -312,6 +312,8 @@ int32_t cam_sensor_parse_dt(struct cam_sensor_ctrl_t *s_ctrl)
 
 	/* Initialize mutex */
 	mutex_init(&(s_ctrl->cam_sensor_mutex));
+	mutex_init(&(s_ctrl->read_buf_lock));
+	INIT_LIST_HEAD(&(s_ctrl->read_buf_list));
 
 	/* Initialize default parameters */
 	for (i = 0; i < soc_info->num_clk; i++) {

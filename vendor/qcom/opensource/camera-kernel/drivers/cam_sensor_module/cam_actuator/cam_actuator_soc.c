@@ -26,6 +26,8 @@ int32_t cam_actuator_parse_dt(struct cam_actuator_ctrl_t *a_ctrl,
 
 	/* Initialize mutex */
 	mutex_init(&(a_ctrl->actuator_mutex));
+	mutex_init(&(a_ctrl->read_buf_lock));
+	INIT_LIST_HEAD(&(a_ctrl->read_buf_list));
 
 	rc = cam_soc_util_get_dt_properties(soc_info);
 	if (rc < 0) {

@@ -97,6 +97,8 @@ struct cam_ois_intf_params {
  * @is_ois_calib    :   flag for Calibration data
  * @opcode          :   ois opcode
  * @device_name     :   Device name
+ * @read_buf_list   :   ois register read cmd buffer handle list
+ * @read_buf_lock   :   ois register read cmd buffer mutex
  *
  */
 struct cam_ois_ctrl_t {
@@ -125,6 +127,8 @@ struct cam_ois_ctrl_t {
 	struct i2c_settings_array i2c_fw_init_data[MAX_OIS_FW_COUNT];
 	struct i2c_settings_array i2c_fw_finalize_data[MAX_OIS_FW_COUNT];
 	struct i2c_settings_array i2c_fw_version_data;
+	struct list_head read_buf_list;
+	struct mutex read_buf_lock;
 };
 
 /**

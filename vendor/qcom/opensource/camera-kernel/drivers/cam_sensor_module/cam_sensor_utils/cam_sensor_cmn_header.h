@@ -363,6 +363,11 @@ struct msm_camera_gpio_conf {
 	struct msm_camera_gpio_num_info *gpio_num_info;
 };
 
+struct cam_sensor_read_buf_list {
+	int32_t read_buf_handle;
+	struct list_head list;
+};
+
 /**
  * cam_sensor_module_add_i2c_device()
  * @brief: Each sensor device passes its ctrl struct to a global

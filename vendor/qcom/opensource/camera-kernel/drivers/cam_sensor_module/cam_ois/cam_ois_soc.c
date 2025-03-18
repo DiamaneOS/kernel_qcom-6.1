@@ -145,5 +145,8 @@ int cam_ois_driver_soc_init(struct cam_ois_ctrl_t *o_ctrl)
 	if (rc < 0)
 		CAM_DBG(CAM_OIS, "failed: ois get dt data rc %d", rc);
 
+	INIT_LIST_HEAD(&(o_ctrl->read_buf_list));
+	mutex_init(&(o_ctrl->read_buf_lock));
+
 	return rc;
 }
