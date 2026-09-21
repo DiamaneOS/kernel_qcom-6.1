@@ -1027,3 +1027,13 @@ ddk_headers(
     ],
     visibility = ["//visibility:private"],
 )
+
+# The GPU devfreq governor uses this internal API from the matched kernel.
+# Keep the dependency scoped to that package instead of enabling the global
+# DDK migration header list.
+ddk_headers(
+    name = "kgsl_devfreq_governor_headers",
+    hdrs = ["drivers/devfreq/governor.h"],
+    includes = ["drivers/devfreq"],
+    visibility = ["//vendor/qcom/opensource/graphics-kernel:__pkg__"],
+)
