@@ -2126,10 +2126,10 @@ struct reg_access_funcs_s {
  * NOTE: The table below defines all access combinations.
  */
 static struct reg_access_funcs_s io_matrix[] = {
-	{ act_read, act_write }, /* the AA_COMBO */
-	{ act_read, nop_write }, /* the AN_COMBO */
-	{ nop_read, act_write }, /* the NA_COMBO */
-	{ nop_read, nop_write }, /* the NN_COMBO */
+	{ .read = act_read, .write = act_write }, /* the AA_COMBO */
+	{ .read = act_read, .write = nop_write }, /* the AN_COMBO */
+	{ .read = nop_read, .write = act_write }, /* the NA_COMBO */
+	{ .read = nop_read, .write = nop_write }, /* the NN_COMBO */
 };
 
 /*
