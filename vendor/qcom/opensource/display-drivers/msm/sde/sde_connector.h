@@ -13,6 +13,7 @@
 
 #include "msm_drv.h"
 #include "msm_prop.h"
+#include "dsi_defs.h"
 #include "sde_kms.h"
 #include "sde_fence.h"
 
