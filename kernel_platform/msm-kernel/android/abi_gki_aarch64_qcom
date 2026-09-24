@@ -691,7 +691,6 @@
   __devm_rtc_register_device
   devm_snd_soc_register_card
   devm_snd_soc_register_component
-  devm_tegra_memory_controller_get
   devm_thermal_of_cooling_device_register
   devm_thermal_of_zone_register
   devm_usb_get_phy_by_node
@@ -3432,7 +3431,6 @@
   __task_rq_lock
   task_rq_lock
   tcp_hashinfo
-  tegra_mc_probe_device
   thermal_cdev_update
   thermal_cooling_device_register
   thermal_cooling_device_unregister
