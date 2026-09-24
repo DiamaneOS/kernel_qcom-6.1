@@ -925,77 +925,77 @@ static struct ipahal_hw_stats_obj
 	ipahal_hw_stats_objs[IPA_HW_MAX][IPAHAL_HW_STATS_MAX] = {
 	/* IPAv4 */
 	[IPA_HW_v4_0][IPAHAL_HW_STATS_QUOTA] = {
-		ipahal_generate_init_pyld_quota,
-		ipahal_get_offset_quota,
-		ipahal_parse_stats_quota
+		.generate_init_pyld = ipahal_generate_init_pyld_quota,
+		.get_offset = ipahal_get_offset_quota,
+		.parse_stats = ipahal_parse_stats_quota
 	},
 	[IPA_HW_v4_0][IPAHAL_HW_STATS_TETHERING] = {
-		ipahal_generate_init_pyld_tethering,
-		ipahal_get_offset_tethering,
-		ipahal_parse_stats_tethering
+		.generate_init_pyld = ipahal_generate_init_pyld_tethering,
+		.get_offset = ipahal_get_offset_tethering,
+		.parse_stats = ipahal_parse_stats_tethering
 	},
 	[IPA_HW_v4_0][IPAHAL_HW_STATS_FNR] = {
-		ipahal_generate_init_pyld_flt_rt,
-		ipahal_get_offset_flt_rt,
-		ipahal_parse_stats_flt_rt
+		.generate_init_pyld = ipahal_generate_init_pyld_flt_rt,
+		.get_offset = ipahal_get_offset_flt_rt,
+		.parse_stats = ipahal_parse_stats_flt_rt
 	},
 	[IPA_HW_v4_0][IPAHAL_HW_STATS_DROP] = {
-		ipahal_generate_init_pyld_drop,
-		ipahal_get_offset_drop,
-		ipahal_parse_stats_drop
+		.generate_init_pyld = ipahal_generate_init_pyld_drop,
+		.get_offset = ipahal_get_offset_drop,
+		.parse_stats = ipahal_parse_stats_drop
 	},
 
 	/* IPAv4_5 */
 	[IPA_HW_v4_5][IPAHAL_HW_STATS_QUOTA] = {
-		ipahal_generate_init_pyld_quota,
-		ipahal_get_offset_quota,
-		ipahal_parse_stats_quota
+		.generate_init_pyld = ipahal_generate_init_pyld_quota,
+		.get_offset = ipahal_get_offset_quota,
+		.parse_stats = ipahal_parse_stats_quota
 	},
 	[IPA_HW_v4_5][IPAHAL_HW_STATS_FNR] = {
-		ipahal_generate_init_pyld_flt_rt_v4_5,
-		ipahal_get_offset_flt_rt_v4_5,
-		ipahal_parse_stats_flt_rt_v4_5
+		.generate_init_pyld = ipahal_generate_init_pyld_flt_rt_v4_5,
+		.get_offset = ipahal_get_offset_flt_rt_v4_5,
+		.parse_stats = ipahal_parse_stats_flt_rt_v4_5
 	},
 	[IPA_HW_v4_5][IPAHAL_HW_STATS_TETHERING] = {
-		ipahal_generate_init_pyld_tethering,
-		ipahal_get_offset_tethering,
-		ipahal_parse_stats_tethering
+		.generate_init_pyld = ipahal_generate_init_pyld_tethering,
+		.get_offset = ipahal_get_offset_tethering,
+		.parse_stats = ipahal_parse_stats_tethering
 	},
 	[IPA_HW_v4_5][IPAHAL_HW_STATS_DROP] = {
-		ipahal_generate_init_pyld_drop,
-		ipahal_get_offset_drop,
-		ipahal_parse_stats_drop
+		.generate_init_pyld = ipahal_generate_init_pyld_drop,
+		.get_offset = ipahal_get_offset_drop,
+		.parse_stats = ipahal_parse_stats_drop
 	},
 
 	/* IPAv5_0 */
 	[IPA_HW_v5_0][IPAHAL_HW_STATS_TETHERING] = {
-		ipahal_generate_init_pyld_tethering_v5_0,
-		ipahal_get_offset_tethering_v5_0,
-		ipahal_parse_stats_tethering_v5_0
+		.generate_init_pyld = ipahal_generate_init_pyld_tethering_v5_0,
+		.get_offset = ipahal_get_offset_tethering_v5_0,
+		.parse_stats = ipahal_parse_stats_tethering_v5_0
 	},
 	[IPA_HW_v5_0][IPAHAL_HW_STATS_QUOTA] = {
-		ipahal_generate_init_pyld_quota_v5_0,
-		ipahal_get_offset_quota_v5_0,
-		ipahal_parse_stats_quota_v5_0
+		.generate_init_pyld = ipahal_generate_init_pyld_quota_v5_0,
+		.get_offset = ipahal_get_offset_quota_v5_0,
+		.parse_stats = ipahal_parse_stats_quota_v5_0
 	},
 	[IPA_HW_v5_0][IPAHAL_HW_STATS_DROP] = {
-		ipahal_generate_init_pyld_drop_v5_0,
-		ipahal_get_offset_drop_v5_0,
-		ipahal_parse_stats_drop_v5_0
+		.generate_init_pyld = ipahal_generate_init_pyld_drop_v5_0,
+		.get_offset = ipahal_get_offset_drop_v5_0,
+		.parse_stats = ipahal_parse_stats_drop_v5_0
 	},
 
 	/* IPAv5_2 */
 	[IPA_HW_v5_2][IPAHAL_HW_STATS_TETHERING] = {
-		ipahal_generate_init_pyld_tethering_v5_2,
-		ipahal_get_offset_tethering_v5_0,
-		ipahal_parse_stats_tethering_v5_0
+		.generate_init_pyld = ipahal_generate_init_pyld_tethering_v5_2,
+		.get_offset = ipahal_get_offset_tethering_v5_0,
+		.parse_stats = ipahal_parse_stats_tethering_v5_0
 	},
 
 	/* IPAv5_5 */
 	[IPA_HW_v5_5][IPAHAL_HW_STATS_TETHERING] = {
-		ipahal_generate_init_pyld_tethering_v5_0,
-		ipahal_get_offset_tethering_v5_0,
-		ipahal_parse_stats_tethering_v5_0
+		.generate_init_pyld = ipahal_generate_init_pyld_tethering_v5_0,
+		.get_offset = ipahal_get_offset_tethering_v5_0,
+		.parse_stats = ipahal_parse_stats_tethering_v5_0
 	},
 };
 
