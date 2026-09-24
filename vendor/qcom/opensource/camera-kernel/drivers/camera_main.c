@@ -85,103 +85,103 @@ struct camera_submodule {
 };
 
 static const struct camera_submodule_component camera_base[] = {
-	{&cam_req_mgr_init, &cam_req_mgr_exit},
-	{&cam_sync_init, &cam_sync_exit},
-	{&cam_smmu_init_module, &cam_smmu_exit_module},
-	{&cam_cpas_dev_init_module, &cam_cpas_dev_exit_module},
-	{&cam_cdm_intf_init_module, &cam_cdm_intf_exit_module},
-	{&cam_hw_cdm_init_module, &cam_hw_cdm_exit_module},
+	{.init = &cam_req_mgr_init, .exit = &cam_req_mgr_exit},
+	{.init = &cam_sync_init, .exit = &cam_sync_exit},
+	{.init = &cam_smmu_init_module, .exit = &cam_smmu_exit_module},
+	{.init = &cam_cpas_dev_init_module, .exit = &cam_cpas_dev_exit_module},
+	{.init = &cam_cdm_intf_init_module, .exit = &cam_cdm_intf_exit_module},
+	{.init = &cam_hw_cdm_init_module, .exit = &cam_hw_cdm_exit_module},
 };
 
 static const struct camera_submodule_component camera_tfe[] = {
 #ifdef CONFIG_SPECTRA_TFE
-	{&cam_csid_ppi100_init_module, &cam_csid_ppi100_exit_module},
-	{&cam_tfe_init_module, &cam_tfe_exit_module},
-	{&cam_tfe_csid_init_module, &cam_tfe_csid_exit_module},
+	{.init = &cam_csid_ppi100_init_module, .exit = &cam_csid_ppi100_exit_module},
+	{.init = &cam_tfe_init_module, .exit = &cam_tfe_exit_module},
+	{.init = &cam_tfe_csid_init_module, .exit = &cam_tfe_csid_exit_module},
 #endif
 };
 
 static const struct camera_submodule_component camera_isp[] = {
 #ifdef CONFIG_SPECTRA_ISP
-	{&cam_ife_csid_init_module, &cam_ife_csid_exit_module},
-	{&cam_ife_csid_lite_init_module, &cam_ife_csid_lite_exit_module},
-	{&cam_vfe_init_module, &cam_vfe_exit_module},
-	{&cam_sfe_init_module, &cam_sfe_exit_module},
-	{&cam_isp_dev_init_module, &cam_isp_dev_exit_module},
+	{.init = &cam_ife_csid_init_module, .exit = &cam_ife_csid_exit_module},
+	{.init = &cam_ife_csid_lite_init_module, .exit = &cam_ife_csid_lite_exit_module},
+	{.init = &cam_vfe_init_module, .exit = &cam_vfe_exit_module},
+	{.init = &cam_sfe_init_module, .exit = &cam_sfe_exit_module},
+	{.init = &cam_isp_dev_init_module, .exit = &cam_isp_dev_exit_module},
 #endif
 };
 
 static const struct camera_submodule_component camera_sensor[] = {
 #ifdef CONFIG_SPECTRA_SENSOR
-	{&cam_res_mgr_init, &cam_res_mgr_exit},
-	{&cam_cci_init_module, &cam_cci_exit_module},
-	{&cam_csiphy_init_module, &cam_csiphy_exit_module},
-	{&cam_tpg_init_module, &cam_tpg_exit_module},
-	{&cam_actuator_driver_init, &cam_actuator_driver_exit},
-	{&cam_sensor_driver_init, &cam_sensor_driver_exit},
-	{&cam_eeprom_driver_init, &cam_eeprom_driver_exit},
-	{&cam_ois_driver_init, &cam_ois_driver_exit},
-	{&cam_flash_init_module, &cam_flash_exit_module},
+	{.init = &cam_res_mgr_init, .exit = &cam_res_mgr_exit},
+	{.init = &cam_cci_init_module, .exit = &cam_cci_exit_module},
+	{.init = &cam_csiphy_init_module, .exit = &cam_csiphy_exit_module},
+	{.init = &cam_tpg_init_module, .exit = &cam_tpg_exit_module},
+	{.init = &cam_actuator_driver_init, .exit = &cam_actuator_driver_exit},
+	{.init = &cam_sensor_driver_init, .exit = &cam_sensor_driver_exit},
+	{.init = &cam_eeprom_driver_init, .exit = &cam_eeprom_driver_exit},
+	{.init = &cam_ois_driver_init, .exit = &cam_ois_driver_exit},
+	{.init = &cam_flash_init_module, .exit = &cam_flash_exit_module},
 #endif
 };
 
 static const struct camera_submodule_component camera_icp[] = {
 #ifdef CONFIG_SPECTRA_ICP
-	{&cam_icp_v1_init_module, &cam_icp_v1_exit_module},
-	{&cam_icp_v2_init_module, &cam_icp_v2_exit_module},
-	{&cam_ipe_init_module, &cam_ipe_exit_module},
-	{&cam_bps_init_module, &cam_bps_exit_module},
-	{&cam_ofe_init_module, &cam_ofe_exit_module},
-	{&cam_icp_init_module, &cam_icp_exit_module},
+	{.init = &cam_icp_v1_init_module, .exit = &cam_icp_v1_exit_module},
+	{.init = &cam_icp_v2_init_module, .exit = &cam_icp_v2_exit_module},
+	{.init = &cam_ipe_init_module, .exit = &cam_ipe_exit_module},
+	{.init = &cam_bps_init_module, .exit = &cam_bps_exit_module},
+	{.init = &cam_ofe_init_module, .exit = &cam_ofe_exit_module},
+	{.init = &cam_icp_init_module, .exit = &cam_icp_exit_module},
 #endif
 };
 
 static const struct camera_submodule_component camera_ope[] = {
 #ifdef CONFIG_SPECTRA_OPE
-	{&cam_ope_init_module, &cam_ope_exit_module},
-	{&cam_ope_subdev_init_module, &cam_ope_subdev_exit_module},
+	{.init = &cam_ope_init_module, .exit = &cam_ope_exit_module},
+	{.init = &cam_ope_subdev_init_module, .exit = &cam_ope_subdev_exit_module},
 #endif
 };
 
 static const struct camera_submodule_component camera_cre[] = {
 #ifdef CONFIG_SPECTRA_CRE
-	{&cam_cre_init_module, &cam_cre_exit_module},
-	{&cam_cre_subdev_init_module, &cam_cre_subdev_exit_module},
+	{.init = &cam_cre_init_module, .exit = &cam_cre_exit_module},
+	{.init = &cam_cre_subdev_init_module, .exit = &cam_cre_subdev_exit_module},
 #endif
 };
 static const struct camera_submodule_component camera_jpeg[] = {
 #ifdef CONFIG_SPECTRA_JPEG
-	{&cam_jpeg_enc_init_module, &cam_jpeg_enc_exit_module},
-	{&cam_jpeg_dma_init_module, &cam_jpeg_dma_exit_module},
-	{&cam_jpeg_dev_init_module, &cam_jpeg_dev_exit_module},
+	{.init = &cam_jpeg_enc_init_module, .exit = &cam_jpeg_enc_exit_module},
+	{.init = &cam_jpeg_dma_init_module, .exit = &cam_jpeg_dma_exit_module},
+	{.init = &cam_jpeg_dev_init_module, .exit = &cam_jpeg_dev_exit_module},
 #endif
 };
 
 static const struct camera_submodule_component camera_fd[] = {
 #ifdef CONFIG_SPECTRA_FD
-	{&cam_fd_hw_init_module, &cam_fd_hw_exit_module},
-	{&cam_fd_dev_init_module, &cam_fd_dev_exit_module},
+	{.init = &cam_fd_hw_init_module, .exit = &cam_fd_hw_exit_module},
+	{.init = &cam_fd_dev_init_module, .exit = &cam_fd_dev_exit_module},
 #endif
 };
 
 static const struct camera_submodule_component camera_lrme[] = {
 #ifdef CONFIG_SPECTRA_LRME
-	{&cam_lrme_hw_init_module, &cam_lrme_hw_exit_module},
-	{&cam_lrme_dev_init_module, &cam_lrme_dev_exit_module},
+	{.init = &cam_lrme_hw_init_module, .exit = &cam_lrme_hw_exit_module},
+	{.init = &cam_lrme_dev_init_module, .exit = &cam_lrme_dev_exit_module},
 #endif
 };
 
 static const struct camera_submodule_component camera_custom[] = {
 #ifdef CONFIG_SPECTRA_CUSTOM
-	{&cam_custom_hw_sub_module_init, &cam_custom_hw_sub_module_exit},
-	{&cam_custom_csid_driver_init, &cam_custom_csid_driver_exit},
-	{&cam_custom_dev_init_module, &cam_custom_dev_exit_module},
+	{.init = &cam_custom_hw_sub_module_init, .exit = &cam_custom_hw_sub_module_exit},
+	{.init = &cam_custom_csid_driver_init, .exit = &cam_custom_csid_driver_exit},
+	{.init = &cam_custom_dev_init_module, .exit = &cam_custom_dev_exit_module},
 #endif
 };
 
 static const struct camera_submodule_component camera_presil[] = {
 #ifdef CONFIG_CAM_PRESIL
-	{&cam_presil_framework_dev_init_from_main, &cam_presil_framework_dev_exit_from_main},
+	{.init = &cam_presil_framework_dev_init_from_main, .exit = &cam_presil_framework_dev_exit_from_main},
 #endif
 };
 
