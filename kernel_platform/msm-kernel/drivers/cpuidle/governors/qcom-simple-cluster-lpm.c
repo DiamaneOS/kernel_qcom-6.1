@@ -13,7 +13,9 @@
 #include <linux/spinlock.h>
 
 #if defined(_TRACE_HOOK_PM_DOMAIN_H)
+#if __has_include(<trace/hooks/pm_domain.h>)
 #include <trace/hooks/pm_domain.h>
+#endif
 #endif
 
 #define CREATE_TRACE_POINTS
