@@ -63,6 +63,9 @@
 #include <wlan_mlo_mgr_link_switch.h>
 #endif
 
+struct psoc_mlme_wakelock;
+struct vdev_response_timer;
+
 /* Number of dev type: Direct attach and Offload */
 #define MAX_DEV_TYPE 2
 
