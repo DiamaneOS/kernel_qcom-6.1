@@ -7682,7 +7682,7 @@ static void ipa3_register_panic_hdlr(void)
 		&ipa3_panic_blk);
 }
 
-static void ipa3_unregister_panic_hdlr(void)
+static void __maybe_unused ipa3_unregister_panic_hdlr(void)
 {
 	atomic_notifier_chain_unregister(&panic_notifier_list,
 		&ipa3_panic_blk);

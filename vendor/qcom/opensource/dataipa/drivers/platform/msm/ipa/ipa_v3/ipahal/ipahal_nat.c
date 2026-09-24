@@ -318,52 +318,52 @@ struct ipahal_nat_obj {
 static struct ipahal_nat_obj ipahal_nat_objs[IPA_HW_MAX][IPA_NAT_MAX] = {
 	/* IPAv3 */
 	[IPA_HW_v3_0][IPAHAL_NAT_IPV4] = {
-			ipa_nat_ipv4_entry_size_v_3_0,
-			ipa_nat_ipv4_is_entry_zeroed_v_3_0,
-			ipa_nat_ipv4_is_entry_valid_v_3_0,
-			ipa_nat_ipv4_stringify_entry_v_3_0
+			.entry_size = ipa_nat_ipv4_entry_size_v_3_0,
+			.is_entry_zeroed = ipa_nat_ipv4_is_entry_zeroed_v_3_0,
+			.is_entry_valid = ipa_nat_ipv4_is_entry_valid_v_3_0,
+			.stringify_entry = ipa_nat_ipv4_stringify_entry_v_3_0
 		},
 	[IPA_HW_v3_0][IPAHAL_NAT_IPV4_INDEX] = {
-			ipa_nat_ipv4_index_entry_size_v_3_0,
-			ipa_nat_ipv4_is_index_entry_zeroed_v_3_0,
-			ipa_nat_ipv4_is_index_entry_valid_v_3_0,
-			ipa_nat_ipv4_index_stringify_entry_v_3_0
+			.entry_size = ipa_nat_ipv4_index_entry_size_v_3_0,
+			.is_entry_zeroed = ipa_nat_ipv4_is_index_entry_zeroed_v_3_0,
+			.is_entry_valid = ipa_nat_ipv4_is_index_entry_valid_v_3_0,
+			.stringify_entry = ipa_nat_ipv4_index_stringify_entry_v_3_0
 		},
 
 	/* IPAv4 */
 	[IPA_HW_v4_0][IPAHAL_NAT_IPV4] = {
-			ipa_nat_ipv4_entry_size_v_3_0,
-			ipa_nat_ipv4_is_entry_zeroed_v_3_0,
-			ipa_nat_ipv4_is_entry_valid_v_3_0,
-			ipa_nat_ipv4_stringify_entry_v_4_0
+			.entry_size = ipa_nat_ipv4_entry_size_v_3_0,
+			.is_entry_zeroed = ipa_nat_ipv4_is_entry_zeroed_v_3_0,
+			.is_entry_valid = ipa_nat_ipv4_is_entry_valid_v_3_0,
+			.stringify_entry = ipa_nat_ipv4_stringify_entry_v_4_0
 		},
 	[IPA_HW_v4_0][IPAHAL_NAT_IPV4_PDN] = {
-			ipa_nat_ipv4_pdn_entry_size_v_4_0,
-			ipa_nat_ipv4_is_pdn_entry_zeroed_v_4_0,
-			ipa_nat_ipv4_is_pdn_entry_valid_v_4_0,
-			ipa_nat_ipv4_pdn_stringify_entry_v_4_0,
-			ipa_nat_ipv4_pdn_construct_entry_v_4_0,
-			ipa_nat_ipv4_pdn_parse_entry_v_4_0
+			.entry_size = ipa_nat_ipv4_pdn_entry_size_v_4_0,
+			.is_entry_zeroed = ipa_nat_ipv4_is_pdn_entry_zeroed_v_4_0,
+			.is_entry_valid = ipa_nat_ipv4_is_pdn_entry_valid_v_4_0,
+			.stringify_entry = ipa_nat_ipv4_pdn_stringify_entry_v_4_0,
+			.construct_entry = ipa_nat_ipv4_pdn_construct_entry_v_4_0,
+			.parse_entry = ipa_nat_ipv4_pdn_parse_entry_v_4_0
 		},
 	[IPA_HW_v4_0][IPAHAL_NAT_IPV6CT] = {
-			ipa_nat_ipv6ct_entry_size_v_4_0,
-			ipa_nat_ipv6ct_is_entry_zeroed_v_4_0,
-			ipa_nat_ipv6ct_is_entry_valid_v_4_0,
-			ipa_nat_ipv6ct_stringify_entry_v_4_0
+			.entry_size = ipa_nat_ipv6ct_entry_size_v_4_0,
+			.is_entry_zeroed = ipa_nat_ipv6ct_is_entry_zeroed_v_4_0,
+			.is_entry_valid = ipa_nat_ipv6ct_is_entry_valid_v_4_0,
+			.stringify_entry = ipa_nat_ipv6ct_stringify_entry_v_4_0
 		},
 
 	/* IPAv4.5 */
 	[IPA_HW_v4_5][IPAHAL_NAT_IPV4] = {
-			ipa_nat_ipv4_entry_size_v_3_0,
-			ipa_nat_ipv4_is_entry_zeroed_v_3_0,
-			ipa_nat_ipv4_is_entry_valid_v_3_0,
-			ipa_nat_ipv4_stringify_entry_v_4_5
+			.entry_size = ipa_nat_ipv4_entry_size_v_3_0,
+			.is_entry_zeroed = ipa_nat_ipv4_is_entry_zeroed_v_3_0,
+			.is_entry_valid = ipa_nat_ipv4_is_entry_valid_v_3_0,
+			.stringify_entry = ipa_nat_ipv4_stringify_entry_v_4_5
 		},
 	[IPA_HW_v4_5][IPAHAL_NAT_IPV6CT] = {
-			ipa_nat_ipv6ct_entry_size_v_4_0,
-			ipa_nat_ipv6ct_is_entry_zeroed_v_4_0,
-			ipa_nat_ipv6ct_is_entry_valid_v_4_0,
-			ipa_nat_ipv6ct_stringify_entry_v_4_5
+			.entry_size = ipa_nat_ipv6ct_entry_size_v_4_0,
+			.is_entry_zeroed = ipa_nat_ipv6ct_is_entry_zeroed_v_4_0,
+			.is_entry_valid = ipa_nat_ipv6ct_is_entry_valid_v_4_0,
+			.stringify_entry = ipa_nat_ipv6ct_stringify_entry_v_4_5
 		}
 };
 

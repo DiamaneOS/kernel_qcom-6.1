@@ -2754,13 +2754,13 @@ bool ipa_usb_is_teth_prot_connected(enum ipa_usb_teth_prot usb_teth_prot)
 EXPORT_SYMBOL(ipa_usb_is_teth_prot_connected);
 
 static struct ipa_usb_ops usb_ops = {
-	ipa_usb_init_teth_prot,
-	ipa_usb_xdci_connect,
-	ipa_usb_xdci_disconnect,
-	ipa_usb_deinit_teth_prot,
-	ipa_usb_xdci_suspend,
-	ipa_usb_xdci_resume,
-	ipa_usb_is_teth_prot_connected,
+	.init_teth_prot = ipa_usb_init_teth_prot,
+	.xdci_connect = ipa_usb_xdci_connect,
+	.xdci_disconnect = ipa_usb_xdci_disconnect,
+	.deinit_teth_prot = ipa_usb_deinit_teth_prot,
+	.xdci_suspend = ipa_usb_xdci_suspend,
+	.xdci_resume = ipa_usb_xdci_resume,
+	.ipa_usb_is_teth_prot_connected = ipa_usb_is_teth_prot_connected,
 };
 
 int ipa3_usb_init(void)
