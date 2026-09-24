@@ -5425,7 +5425,7 @@ static int _qce_resume(void *handle)
 	return rc;
 }
 
-struct qce_pm_table qce_pm_table  = {_qce_suspend, _qce_resume};
+struct qce_pm_table qce_pm_table  = {.suspend = _qce_suspend, .resume = _qce_resume};
 EXPORT_SYMBOL(qce_pm_table);
 
 int qce_aead_req(void *handle, struct qce_req *q_req)
