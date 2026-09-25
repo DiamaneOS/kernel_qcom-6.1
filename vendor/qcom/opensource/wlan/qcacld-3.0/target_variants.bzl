@@ -1,5 +1,6 @@
 targets = [
     # keep sorted
+    "fps",
     "niobe",
     "pineapple",
     "sun",
