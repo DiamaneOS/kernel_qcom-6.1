@@ -137,7 +137,10 @@ def define_target_variant_module(target, variant):
             "CONFIG_QCOM_KGSL_USE_SHMEM": { False: [ "kgsl_pool.c" ] },
             "CONFIG_SYNC_FILE": { True: [ "kgsl_sync.c" ] },
         },
-        deps = [ "//msm-kernel:all_headers" ] + ext_deps,
+        deps = [
+            "//msm-kernel:all_headers",
+            "//msm-kernel:kgsl_devfreq_governor_headers",
+        ] + ext_deps,
         includes = ["include", "."],
         kernel_build = kernel_build,
         visibility = ["//visibility:private"]
