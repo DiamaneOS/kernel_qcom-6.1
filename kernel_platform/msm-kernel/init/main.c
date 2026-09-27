@@ -904,6 +904,27 @@ void __init __weak arch_call_rest_init(void)
 	rest_init();
 }
 
+/*
+ * Parameters the kernel does not use are passed to init, as arguments or as
+ * environment strings. They can carry device identifiers (the Fairphone 6
+ * bootloader passes the Wi-Fi MAC address this way), so the kernel log shows
+ * their names only, never their values.
+ */
+static int __init param_name_len(const char *param)
+{
+	return strcspn(param, "=");
+}
+
+static bool __init passed_to_init_env(const char *name, size_t len)
+{
+	const char *const *p;
+
+	for (p = envp_init; *p; p++)
+		if (!strncmp(*p, name, len) && (*p)[len] == '=')
+			return true;
+	return false;
+}
+
 static void __init print_unknown_bootoptions(void)
 {
 	char *unknown_options;
@@ -937,9 +958,9 @@ static void __init print_unknown_bootoptions(void)
 	end = unknown_options;
 
 	for (p = &argv_init[1]; *p; p++)
-		end += sprintf(end, " %s", *p);
+		end += sprintf(end, " %.*s", param_name_len(*p), *p);
 	for (p = &envp_init[2]; *p; p++)
-		end += sprintf(end, " %s", *p);
+		end += sprintf(end, " %.*s", param_name_len(*p), *p);
 
 	/* Start at unknown_options[1] to skip the initial space */
 	pr_notice("Unknown kernel command line parameters \"%s\", will be passed to user space.\n",
@@ -1042,6 +1063,61 @@ static void __init print_kernel_cmdline(const char *cmdline)
 		pr_notice("%s%s\n", KERNEL_CMDLINE_PREFIX, cmdline);
 }
 
+/*
+ * Print the command line without the values of parameters passed to user
+ * space: those in init's environment and everything after "--". Tokens are
+ * split as next_arg() splits them. Call it after the command line has been
+ * parsed, when the environment is complete.
+ */
+static void __init print_kernel_cmdline_names(const char *cmdline)
+{
+	size_t size = strlen(cmdline) + 1;
+	bool init_args = false;
+	const char *s = cmdline;
+	char *out, *d;
+
+	out = memblock_alloc(size, SMP_CACHE_BYTES);
+	if (!out) {
+		pr_err("%s: Failed to allocate %zu bytes\n", __func__, size);
+		return;
+	}
+	d = out;
+	while (*s) {
+		const char *start = s, *name = s, *equals = NULL, *end;
+		bool in_quote = false;
+
+		if (isspace(*s)) {
+			*d++ = *s++;
+			continue;
+		}
+		for (; *s && (in_quote || !isspace(*s)); s++) {
+			if (*s == '=' && !equals)
+				equals = s;
+			if (*s == '"')
+				in_quote = !in_quote;
+		}
+		end = s;
+		if (*name == '"')
+			name++;
+		if (!equals) {
+			const char *last = end - (end > name && end[-1] == '"');
+
+			if (last - name == 2 && !strncmp(name, "--", 2))
+				init_args = true;
+		} else if (equals > name &&
+			   (init_args || panic_later ||
+			    passed_to_init_env(name, equals - name))) {
+			start = name;
+			end = equals;
+		}
+		memcpy(d, start, end - start);
+		d += end - start;
+	}
+	*d = '\0';
+	print_kernel_cmdline(out);
+	memblock_free(out, size);
+}
+
 #ifdef CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE
 static void __init setup_arch_task_struct_size(void)
 {
@@ -1104,7 +1180,6 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 	build_all_zonelists(NULL);
 	page_alloc_init();
 
-	print_kernel_cmdline(saved_command_line);
 	/* parameters may set static keys */
 	jump_label_init();
 	parse_early_param();
@@ -1113,6 +1188,7 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 				  __stop___param - __start___param,
 				  -1, -1, NULL, &unknown_bootoption);
 	print_unknown_bootoptions();
+	print_kernel_cmdline_names(saved_command_line);
 	if (!IS_ERR_OR_NULL(after_dashes))
 		parse_args("Setting init args", after_dashes, NULL, 0, -1, -1,
 			   NULL, set_init_arg);
@@ -1558,10 +1634,10 @@ static int run_init_process(const char *init_filename)
 	pr_info("Run %s as init process\n", init_filename);
 	pr_debug("  with arguments:\n");
 	for (p = argv_init; *p; p++)
-		pr_debug("    %s\n", *p);
+		pr_debug("    %.*s\n", param_name_len(*p), *p);
 	pr_debug("  with environment:\n");
 	for (p = envp_init; *p; p++)
-		pr_debug("    %s\n", *p);
+		pr_debug("    %.*s\n", param_name_len(*p), *p);
 	return kernel_execve(init_filename, argv_init, envp_init);
 }
 
