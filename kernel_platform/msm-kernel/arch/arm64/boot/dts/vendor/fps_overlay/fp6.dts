@@ -10,3 +10,33 @@
 	compatible = "qcom,volcano";
 	qcom,board-id = <0 0>;
 };
+
+/*
+ * pstore/ramoops: the inherited node sits under /soc with no reg, so the
+ * upstream ramoops driver finds no memory and fails (-22). Describe it as a
+ * dynamically placed reserved-memory region instead; the kernel allocates it
+ * from free memory at boot, so it cannot overlap another carve-out. Sizes as
+ * GrapheneOS ships on Pixels: 4 MiB, 2 MiB console, 2 MiB pmsg, no oops/panic
+ * records and no ftrace (the console already holds a panic's output, and the
+ * function tracer is not built). Write-combined and unmapped from the linear
+ * map, so a reset loses no cached writes. Aligned to its size, so the region
+ * covers whole pages and whole 2 MiB blocks of the linear map.
+ */
+&soc {
+	/delete-node/ ramoops_region;
+};
+
+&reserved_memory {
+	ramoops_mem: ramoops_region {
+		compatible = "ramoops";
+		alloc-ranges = <0x0 0x00000000 0xffffffff 0xffffffff>;
+		size = <0x0 0x400000>;
+		alignment = <0x0 0x400000>;
+		console-size = <0x200000>;
+		pmsg-size = <0x200000>;
+		record-size = <0x0>;
+		ftrace-size = <0x0>;
+		mem-type = <0>;
+		no-map;
+	};
+};
