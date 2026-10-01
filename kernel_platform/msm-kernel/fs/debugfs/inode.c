@@ -901,8 +901,19 @@ static int __init debugfs_init(void)
 {
 	int retval;
 
-	if (!(debugfs_allow & DEBUGFS_ALLOW_MOUNT))
-		return -EPERM;
+	if (!(debugfs_allow & DEBUGFS_ALLOW_MOUNT)) {
+		if (!(debugfs_allow & DEBUGFS_ALLOW_API))
+			return -EPERM;
+		/*
+		 * No mount (DEBUG_FS_DISALLOW_MOUNT or debugfs=no-mount): the
+		 * filesystem stays unregistered and /sys/kernel/debug absent,
+		 * so user space cannot mount it, but kernel clients keep the
+		 * API. Their files live on the internal mount start_creating()
+		 * pins, as before debugfs_initialized() gated file creation.
+		 */
+		debugfs_registered = true;
+		return 0;
+	}
 
 	retval = sysfs_create_mount_point(kernel_kobj, "debug");
 	if (retval)
