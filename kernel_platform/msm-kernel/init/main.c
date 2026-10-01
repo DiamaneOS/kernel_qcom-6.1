@@ -910,7 +910,7 @@ void __init __weak arch_call_rest_init(void)
  * bootloader passes the Wi-Fi MAC address this way), so the kernel log shows
  * their names only, never their values.
  */
-static int __init param_name_len(const char *param)
+static int param_name_len(const char *param)
 {
 	return strcspn(param, "=");
 }
