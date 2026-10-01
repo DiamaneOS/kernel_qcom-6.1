@@ -1290,8 +1290,8 @@ int cnss_wlfw_wlan_mac_req_send_sync(struct cnss_plat_data *plat_priv,
 		goto out;
 	}
 
-		cnss_pr_dbg("Sending WLAN mac req [%pM], state: 0x%lx\n",
-			    mac, plat_priv->driver_state);
+		cnss_pr_dbg("Sending WLAN mac req, state: 0x%lx\n",
+			    plat_priv->driver_state);
 	memcpy(req.mac_addr, mac, mac_len);
 	req.mac_addr_valid = 1;
 
@@ -3764,7 +3764,7 @@ int cnss_qmi_get_dms_mac(struct cnss_plat_data *plat_priv)
 	}
 	plat_priv->dms.mac_valid = true;
 	memcpy(plat_priv->dms.mac, resp.mac_address, QMI_WLFW_MAC_ADDR_SIZE_V01);
-	cnss_pr_info("Received DMS MAC: [%pM]\n", plat_priv->dms.mac);
+	cnss_pr_info("Received DMS MAC address\n");
 out:
 	return ret;
 }
