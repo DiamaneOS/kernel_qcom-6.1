@@ -271,9 +271,7 @@ static int set_wlan_mac_address(const u8 *mac_list, const uint32_t len,
 	for (iter = 0; iter < no_of_mac_addr;
 	     ++iter, temp += ETH_ALEN, mac_list += ETH_ALEN) {
 		ether_addr_copy(temp, mac_list);
-		pr_debug("MAC_ADDR:%02x:%02x:%02x:%02x:%02x:%02x\n",
-			 temp[0], temp[1], temp[2],
-			 temp[3], temp[4], temp[5]);
+		pr_debug("WLAN MAC address %d set, type %d\n", iter, type);
 	}
 	return 0;
 }
