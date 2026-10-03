@@ -1,0 +1,11 @@
+/dts-v1/;
+/plugin/;
+
+#include "monaco-gunyah-vm-cnss.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. Monaco IVI ADAS QAM Gunyah VM";
+	compatible = "qcom,monaco", "qcom,qam";
+	qcom,board-id = <0x10019 0>;
+	qcom,msm-id = <606 0x10000>;
+};
