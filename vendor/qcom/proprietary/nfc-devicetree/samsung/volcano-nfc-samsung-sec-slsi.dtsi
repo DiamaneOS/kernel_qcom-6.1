@@ -1,0 +1,73 @@
+&tlmm {
+    sec-nfc {
+        nfc_pd: nfc_pd {
+            mux {
+                pins = "gpio56";
+                function = "gpio";
+            };
+
+            config {
+                pins = "gpio56";
+                drive-strength = <2>;
+                bias-pull-up;
+            };
+        };
+
+        nfc_clkreq: nfc_clkreq {
+            mux {
+                pins = "gpio6";
+                function = "gpio";
+            };
+
+            config {
+                pins = "gpio6";
+                drive-strength = <2>;
+                bias-disable;
+            };
+        };
+        
+        nfc_irq: nfc_irq {
+            mux {
+                pins = "gpio31";
+                function = "gpio";
+            };
+
+            config {
+                pins = "gpio31";
+                drive-strength = <2>;
+                bias-disable;
+            };
+        };
+    };
+};
+
+&qupv3_se1_i2c {
+    status = "ok";
+    clock-frequency = <4000000>;
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    sec-nfc@27 {
+        compatible = "sec-nfc";
+        reg = <0x27>;
+
+        sec-nfc,ven-gpio = <&tlmm 56 0>;
+        sec-nfc,firm-gpio = <&tlmm 7 0>;
+        sec-nfc,irq-gpio = <&tlmm 31 0>;
+        sec-nfc,clk_req-gpio = <&tlmm 6 0>;
+        sec-nfc,pmic-ldo = "vdd_ldo20";
+        /* clkctrl-reg = <0x10e60a0c>; */
+        /* clock-names = "OSC_NFC"; */
+        /* clocks = <&clock OSC_NFC>; */
+        pinctrl-names = "default";
+        pinctrl-0 = <&nfc_pd &nfc_clkreq &nfc_irq>;
+        /* pinctrl-0 = <&xclkout1 &nfc_pd &nfc_clkreq>; */
+    };
+};
+
+/* NFC_I2C_SDA   GPIO4 */
+/* NFC_I2C_SCL   GPIO5 */
+/* NFC_CLK_REQ   GPIO6 */
+/* NFC_EN        GPIO7 */
+/* NFC_PD        GPIO56 */
+/* NFC_IRQ       GPIO31 */
