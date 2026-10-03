@@ -1,0 +1,154 @@
+#include "dsi-panel-nt37705-boe-amoled-cmd.dtsi"
+
+
+/* set esd */
+&nt37705_boe_amoled_cmd {
+	qcom,esd-check-enabled;
+	qcom,mdss-dsi-panel-status-check-mode = "reg_read";
+	qcom,mdss-dsi-panel-status-command = [06 01 00 01 00 00 01 0a];
+	qcom,mdss-dsi-panel-status-command-state = "dsi_lp_mode";
+	qcom,mdss-dsi-panel-status-value = <0x9c>;
+	qcom,mdss-dsi-panel-status-read-length = <1>;
+	//qcom,mdss-dsi-panel-hdr-enabled;
+
+};
+
+/* set timing */
+&nt37705_boe_amoled_cmd {
+	qcom,dsi-select-clocks = "pll_byte_clk0", "pll_dsi_clk0";
+	qcom,poms-align-panel-vsync;
+	qcom,dsi-supported-dfps-list = <120 90 60 30 10>;
+	qcom,mdss-dsi-pan-enable-dynamic-fps;
+	qcom,mdss-dsi-pan-fps-update = "dfps_immediate_clk_mode";
+	qcom,mdss-dsi-display-timings {
+		timing@0 {
+			//120hz
+			qcom,mdss-dsi-panel-phy-timings = [00 29 0B 0B 1B 1A 0B
+						0B 0A 02 04 00 22 10];
+			qcom,display-topology = <1 1 1>;
+			qcom,default-topology-index = <0>;
+			qcom,mdss-mdp-transfer-time-us = <7300>;
+			qcom,mdss-dsi-panel-clockrate= <1450000000>;
+			//qcom,mdss-mdp-transfer-time-us-min = <6900>;
+			//qcom,mdss-mdp-transfer-time-us-max = <7900>;
+		};
+		timing@1 {
+			//60hz
+			qcom,mdss-dsi-panel-phy-timings = [00 29 0B 0B 1B 1A 0B
+						0B 0A 02 04 00 22 10];
+			qcom,display-topology = <1 1 1>;
+			qcom,default-topology-index = <0>;
+			qcom,mdss-mdp-transfer-time-us = <7300>;
+			qcom,mdss-dsi-panel-clockrate= <1450000000>;
+		};
+		timing@2 {
+			//90hz
+			qcom,mdss-dsi-panel-phy-timings = [00 29 0B 0B 1B 1A 0B
+						0B 0A 02 04 00 22 10];
+			qcom,display-topology = <1 1 1>;
+			qcom,default-topology-index = <0>;
+			qcom,mdss-mdp-transfer-time-us = <7300>;
+			qcom,mdss-dsi-panel-clockrate= <1450000000>;
+		};
+		timing@3 {
+			//30hz
+			qcom,mdss-dsi-panel-phy-timings = [00 29 0B 0B 1B 1A 0B
+						0B 0A 02 04 00 22 10];
+			qcom,display-topology = <1 1 1>;
+			qcom,default-topology-index = <0>;
+			qcom,mdss-mdp-transfer-time-us = <7300>;
+			qcom,mdss-dsi-panel-clockrate= <1450000000>;
+		};
+		timing@4 {
+			//10hz
+			qcom,mdss-dsi-panel-phy-timings = [00 29 0B 0B 1B 1A 0B
+						0B 0A 02 04 00 22 10];
+			qcom,display-topology = <1 1 1>;
+			qcom,default-topology-index = <0>;
+			qcom,mdss-mdp-transfer-time-us = <7300>;
+			qcom,mdss-dsi-panel-clockrate= <1450000000>;
+		};
+	};
+};
+
+&soc {
+	dsi_panel_pwr_supply_amoled_fps: dsi_panel_pwr_supply_amoled_fps {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <220000>;
+			qcom,supply-disable-load = <8000>;
+			qcom,supply-post-on-sleep = <20>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "vci";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3000000>;
+			qcom,supply-enable-load = <10000>;
+			qcom,supply-disable-load = <300>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-post-off-sleep = <2>;
+		};
+
+		/*qcom,panel-supply-entry@2 {
+			reg = <2>;
+			qcom,supply-name = "vdd";
+			qcom,supply-min-voltage = <1200000>;
+			qcom,supply-max-voltage = <1200000>;
+			qcom,supply-enable-load = <200000>;
+			qcom,supply-disable-load = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-post-off-sleep = <2>;
+		};*/
+	};
+};
+
+/* set backlight */
+&nt37705_boe_amoled_cmd {
+    qcom,panel-supply-entries = <&dsi_panel_pwr_supply_amoled_fps>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-max-level = <4094>;
+	qcom,platform-reset-gpio = <&tlmm 12 0>;
+	qcom,platform-dvdd-off-gpio = <&tlmm 54 0>;
+	//qcom,platform-vci-off-gpio = <&pm8350c_gpios 7 0>; //fp5
+};
+
+/* set power */
+&nt37705_boe_amoled_cmd {
+	qcom,ulps-enabled;
+};
+
+/*set default panel*/
+&sde_dsi {
+	vddio-supply = <&L9B>;
+	vci-supply = <&L19B>;
+	//vdd-supply = <&L6F>;
+	qcom,dsi-default-panel = <&nt37705_boe_amoled_cmd>;
+};
+
+
+/* kernel mipi strength
+ * bootloader strength default is zero
+ */
+&mdss_dsi_phy0 {
+   qcom,platform-strength-ctrl = [11 03
+                                 11 03
+                                 11 03
+                                 11 03
+                                 11 00];
+};
+
+&qupv3_se0_spi {
+	eswin_eph861x@0 {
+		panel = <&nt37705_boe_amoled_cmd>;
+	};
+};
