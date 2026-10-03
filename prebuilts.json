@@ -1,0 +1,44 @@
+{
+  "prebuilts": [
+    {
+      "path": "kernel_platform/prebuilts/bazel/linux-x86_64",
+      "url": "https://git.codelinaro.org/clo/la/kernel_platform/prebuilts/bazel/linux-x86_64",
+      "revision": "eee09422f02e60f28192bcb5a8ce8660baba6706"
+    },
+    {
+      "path": "kernel_platform/prebuilts/build-tools",
+      "url": "https://git.codelinaro.org/clo/la/kernel_platform/prebuilts/build-tools",
+      "revision": "3f7cae3e5f7b0cbbb50ececa504e959b5e1a0b1e"
+    },
+    {
+      "path": "kernel_platform/prebuilts/clang-tools",
+      "url": "https://git.codelinaro.org/clo/la/kernel_platform/prebuilts/clang-tools",
+      "revision": "0613fc5443d035335a9541994607bacae03750f2"
+    },
+    {
+      "path": "kernel_platform/prebuilts/clang/host/linux-x86",
+      "url": "https://git.codelinaro.org/clo/la/kernelplatform/prebuilts-master/clang/host/linux-x86",
+      "revision": "9002aa7843a39e9b35bb2d2cbf741cdaf719b981"
+    },
+    {
+      "path": "kernel_platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8",
+      "url": "https://git.codelinaro.org/clo/la/kernelplatform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8",
+      "revision": "dd099b5d68822602228e2af66693e61e7b54e0a9"
+    },
+    {
+      "path": "kernel_platform/prebuilts/jdk/jdk11",
+      "url": "https://git.codelinaro.org/clo/la/kernel_platform/prebuilts/jdk/jdk11",
+      "revision": "ced68c9308cbc1b6ec3e602dba8d0d56df8b6d73"
+    },
+    {
+      "path": "kernel_platform/prebuilts/kernel-build-tools",
+      "url": "https://git.codelinaro.org/clo/la/kernel/prebuilts/build-tools",
+      "revision": "d153b7ab4a4956198957e258d4f370e875c53059"
+    },
+    {
+      "path": "kernel_platform/prebuilts/ndk-r23",
+      "url": "https://git.codelinaro.org/clo/la/kernel_platform/toolchain/prebuilts/ndk/r23",
+      "revision": "269a5dc9e862f78dc2030d9262f73cb2642b8127"
+    }
+  ]
+}
