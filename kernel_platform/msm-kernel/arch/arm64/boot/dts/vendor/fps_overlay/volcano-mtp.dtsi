@@ -1,0 +1,279 @@
+#include <dt-bindings/gpio/gpio.h>
+#include "volcano-thermal-overlay.dtsi"
+
+&soc {
+};
+
+&ufsphy_mem {
+	compatible = "qcom,ufs-phy-qmp-v4-crow";
+
+	/* VDDA_UFS_CORE */
+	vdda-phy-supply = <&L2B>;
+	vdda-phy-max-microamp = <140120>;
+
+	/* VDDA_UFS_0_1P2 */
+	vdda-pll-supply = <&L4B>;
+	vdda-pll-max-microamp = <18340>;
+
+	/* Phy GDSC for VDD_MX, always on */
+	vdd-phy-gdsc-supply = <&gcc_ufs_mem_phy_gdsc>;
+
+	/* Qref power supply, Refer Qref diagram */
+	vdda-qref-supply = <&L2B>;
+	vdda-qref-max-microamp = <2310>;
+
+	status = "ok";
+};
+
+&ufshc_mem {
+	vdd-hba-supply = <&gcc_ufs_phy_gdsc>;
+
+	vcc-supply = <&L12B>;
+	vcc-max-microamp = <800000>;
+
+	vccq-supply = <&L5F>;
+	vccq-max-microamp = <750000>;
+
+	vccq2-supply = <&L4F>;
+	vccq2-max-microamp = <750000>;
+
+	/* VDD_PX10 is voted for the ufs_reset_n */
+	qcom,vddp-ref-clk-supply = <&L5B>;
+	qcom,vddp-ref-clk-max-microamp = <100>;
+
+	qcom,vccq-parent-supply = <&S2B>;
+	qcom,vccq-parent-max-microamp = <210000>;
+
+	status = "ok";
+};
+
+&sdhc_2 {
+	status = "ok";
+
+	vdd-supply = <&L13B>;
+	qcom,vdd-voltage-level = <2960000 2960000>;
+	qcom,vdd-current-level = <0 800000>;
+
+	vdd-io-supply = <&L23B>;
+	qcom,vdd-io-voltage-level = <1800000 2960000>;
+	qcom,vdd-io-current-level = <0 22000>;
+
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&sdc2_on>;
+	pinctrl-1 = <&sdc2_off>;
+
+	cd-gpios = <&tlmm 65 GPIO_ACTIVE_HIGH>;
+};
+
+&qupv3_se0_i2c {
+	status = "disabled";
+};
+
+&qupv3_se0_spi {
+
+	status = "ok";
+/*
+	qcom,touch-active = "goodix,brl-b";
+
+	goodix-berlin@0 {
+		compatible = "goodix,brl-b";
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+		goodix,avdd-name = "avdd";		//3.0v
+		goodix,iovdd-name = "iovdd";	//1.8v
+		avdd-supply = <&L22B>;
+		iovdd-supply = <&L9B>;
+		interrupt-parent = <&tlmm>;
+		//interrupts = <19 0x2008>;
+		goodix,reset-gpio = <&tlmm 20 0x00>;
+		goodix,irq-gpio = <&tlmm 19 0x0>;
+		goodix,irq-flags = <1>; // 1:trigger rising, 2:trigger falling;
+
+		goodix,panel-max-x = <1116>;
+		goodix,panel-max-y = <2484>;
+		goodix,panel-max-w = <255>;
+		goodix,panel-max-p = <4096>; // max pressure that pen device supported
+		//panel = <&nt37705_boe_amoled_cmd>;
+
+		// optional properties
+		//goodix,pen-enable; // support active stylus device
+		//goodix.sleep-enable; // enter sleep mode
+		//goodix,firmware-name = "goodix_firmware.bin";
+		//goodix,config-name = "goodix_cfg_group.bin";
+	};
+*/
+
+	qcom,touch-active = "eswin,eph861x";
+	eswin_eph861x@0 {
+		reg = <0>;
+		pinctrl-names = "ts_active", "ts_suspend";
+		pinctrl-0 = <&ts_irq_active >;
+		pinctrl-1 = <&ts_irq_suspend >;
+
+		avdd-supply = <&L22B>;
+		iovdd-supply = <&L9B>; // AVDD 3.3V
+
+		interrupt-parent = <&tlmm>;
+
+		compatible = "eswin,eph861x";
+		spi-max-frequency = <2000000>; //6000000 decide by project
+		bits-per-word = <8>;
+		spi-cpol;
+		spi-cpha;
+		eswin,spi-mode = <3>; // fixed
+		eswin,regulator_dvdd = "iovdd";
+		eswin,regulator_avdd = "avdd";
+		eswin,power-delay-ms = <200>;
+		eswin,irq-gpio = <&tlmm 19 0x0>; // IRQF_ONESHOT | IRQF_TRIGGER_FALLING | IRQF_NO_SUSPEND  
+		eswin,irq-on-state = <0>;
+		eswin,reset-gpio =  <&tlmm 20 0x00>;
+		eswin,reset-on-state = <0>;
+		eswin,reset-active-ms = <20>;
+		eswin,reset-delay-ms = <200>;
+		eswin,spi-byte-delay-us = <10>;
+		eswin,spi-block-delay-us = <10>;
+		eswin,suspend-mode = <0x02>;
+		eswin,fw_name = "EPH86XX_fw.bin";
+		// eswin,device_settings_name = "EPH86XX_device_settings.bin";
+		eswin,input_name = "ESWIN EPH86XX Touchscreen";
+		eswin,panel-invert-x = <1>;
+		eswin,panel-invert-y = <0>;
+		eswin,panel-max-x = <1116>;
+		eswin,panel-max-y = <2484>;
+		//controller-data{
+		//	cs-clock-delay = <100>;
+		//};
+	};
+
+};
+
+&tlmm {
+	gpio49_input_pull_up: gpio49_input_pull_up {
+		mux {
+			 pins = "gpio80";
+			 function = "gpio";
+		};
+
+		config {
+			pins = "gpio80";
+			drive-strength = <2>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+
+	ts_irq_active: ts_irq_active {
+		mux {
+			 pins = "gpio19";
+			 function = "gpio";
+		};
+
+		config {
+			pins = "gpio19";
+			drive-strength = <2>;
+			bias-disable;
+			input-enable;
+		};
+	};
+
+	ts_irq_suspend: ts_irq_suspend {
+		mux {
+			 pins = "gpio19";
+			 function = "gpio";
+		};
+
+		config {
+			pins = "gpio19";
+			drive-strength = <2>;
+			bias-disable;
+			input-enable;
+		};
+	};
+
+
+};
+
+&qupv3_se7_i2c {
+	status = "ok";
+	haptic_hv@5A {
+		compatible = "awinic,haptic_hv";
+		reg = <0x5A>;
+		irq-gpio = <&tlmm 80 0>;
+		reset-gpio = <&tlmm 78 0>;
+		pinctrl-names = "irq_active";
+		pinctrl-0 = <&gpio49_input_pull_up>;
+		f0_pre = <1700>;
+		mode = /bits/ 8 <5>;
+		aw8693x_f0_cali_percent = /bits/ 8 <15>;
+		aw8693x_gain_bypass = /bits/ 8 <1>;
+		aw8693x_uvlo_vol_default = /bits/ 8 <0>;
+		aw8693x_cont_smart_loop = /bits/ 8 <0>;
+		aw8693x_cont_drv1_lvl = /bits/ 8 <0x7F>;
+		aw8693x_cont_lra_vrms = <1000>;
+		aw8693x_cont_drv1_time = /bits/ 8 <0x04>;
+		aw8693x_cont_drv2_time = /bits/ 8 <0x14>;
+		aw8693x_cont_track_margin = /bits/ 8 <0x0F>;
+		aw8693x_cont_brk_gain = /bits/ 8 <0x08>;
+		aw8693x_cont_brk_time = /bits/ 8 <0x08>;
+		aw8693x_duration_time = /bits/ 8 <20 30 60>;
+		aw8693x_d2s_gain = /bits/ 8 <0x04>;
+		aw8693x_trig_config = /bits/ 8 <0 0 0 1 0 2 0 0 0 0 0 1 0 2 0 0 0 0 0 1 0 2 0 0>;
+		aw8693x_bst_vol_default = <8500>;
+		aw8693x_is_enabled_track_en;
+		/* aw8693x_is_enabled_auto_bst; */
+		/* aw8693x_is_enabled_one_wire; */
+	};
+};
+
+&L1B {
+	status = "disabled";
+};
+
+&regulator_ocp_notifier {
+	periph-1c2-supply = <&L2B>;
+	periph-1c3-supply = <&L3B>;
+	periph-1c4-supply = <&L4B>;
+	periph-1c5-supply = <&L5B>;
+	periph-1c7-supply = <&L7B>;
+	periph-1c8-supply = <&L8B>;
+	periph-1c9-supply = <&L9B>;
+	periph-1ca-supply = <&L10B>;
+	periph-1cb-supply = <&L11B>;
+	periph-1cc-supply = <&L12B>;
+	periph-1cd-supply = <&L13B>;
+	periph-1ce-supply = <&L14B>;
+	periph-1cf-supply = <&L15B>;
+	periph-1d0-supply = <&L16B>;
+	periph-1d1-supply = <&L17B>;
+	periph-1d2-supply = <&L18B>;
+	periph-1d3-supply = <&L19B>;
+	periph-1d4-supply = <&L20B>;
+	periph-1d5-supply = <&L21B>;
+	periph-1d6-supply = <&L22B>;
+	periph-1d7-supply = <&L23B>;
+	periph-19b-supply = <&S1B>;
+	periph-19e-supply = <&S2B>;
+	periph-1a1-supply = <&S3B>;
+	periph-1a4-supply = <&S4B_LEVEL>;
+	periph-1e4-supply = <&BOB>;
+	periph-2c1-supply = <&L1C_LEVEL>;
+	periph-2c2-supply = <&L2C>;
+	periph-2c3-supply = <&L3C_LEVEL>;
+	periph-2a4-supply = <&S4C_LEVEL>;
+	periph-2a7-supply = <&S5C_LEVEL>;
+	periph-2aa-supply = <&S6C_LEVEL>;
+	periph-5c1-supply = <&L1F>;
+	periph-5c2-supply = <&L2F>;
+	periph-5c3-supply = <&L3F>;
+	periph-5c4-supply = <&L4F>;
+	periph-5c5-supply = <&L5F>;
+	periph-5c6-supply = <&L6F>;
+	periph-5c7-supply = <&L7F>;
+	periph-5c8-supply = <&L8F>;
+	periph-5c9-supply = <&L9F>;
+	periph-5ca-supply = <&L10F>;
+	periph-5cb-supply = <&L11F>;
+	periph-5cc-supply = <&L12F_LEVEL>;
+};
+

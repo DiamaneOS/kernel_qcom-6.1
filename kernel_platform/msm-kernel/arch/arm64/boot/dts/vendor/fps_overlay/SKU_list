@@ -1,0 +1,6 @@
+SKU can be written to devinfo partition with the command:
+     fastboot oem sku <sku number>
+
+SKU ID List:
+600 - 699 FPS
+601 - FPS for MINI

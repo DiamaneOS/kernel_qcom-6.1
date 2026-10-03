@@ -1,0 +1,34 @@
+&tlmm {
+	fpv6_switch_key_active: fpv6_switch_key_active {
+		mux {
+			pins = "gpio107";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio107";
+			bias-pull-up;
+			drive-strength = <2>;
+			input_enable;
+		};
+	};
+};
+
+&soc {
+	gpio_keys {
+		compatible = "gpio-keys";
+		label = "gpio-keys";
+		pinctrl-names = "default";
+		pinctrl-0 = <&fpv6_switch_key_active>;
+
+		fpv6_switch {
+			label = "fpv6_switch";
+			gpios = <&tlmm 107 GPIO_ACTIVE_LOW>;
+			linux,input-type = <0x05>; /* EV_SW */
+			linux,code = <0xf>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			linux,can-disable;
+		};
+	};
+};

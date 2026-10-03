@@ -1,0 +1,12 @@
+/dts-v1/;
+
+/* this file is copy from volcano.dts */
+#include "volcano.dtsi"
+#include "feature/keys/volcano-fpv6-switch-key.dtsi"
+#include "feature/keys/volcano-fp6v-hall-key.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. Volcano SoC";
+	compatible = "qcom,volcano";
+	qcom,board-id = <0 0>;
+};

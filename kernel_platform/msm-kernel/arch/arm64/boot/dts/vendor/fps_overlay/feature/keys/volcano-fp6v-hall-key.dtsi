@@ -1,0 +1,31 @@
+
+&tlmm{
+	hall_pin_1: hall_pin_1_defualt {
+		mux {
+			pins = "gpio70";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio70";
+			bias-disable;
+			drive-strength = <2>;
+			input-enable;
+		};
+	};
+	
+};
+
+&soc {
+       hall_1:hall_1 {
+       compatible = "hall,hall_switch_1";
+       pinctrl-names = "hall_1";
+       pinctrl-0 = <&hall_pin_1>;
+       hall-gpio = <&tlmm 70 1>;
+       interrupt-parent = <&tlmm>;
+       interrupts = <70 0x03>;
+       linux,keycode_up =<252>;
+       linux,keycode_down =<253>;
+    };
+     
+};
+
