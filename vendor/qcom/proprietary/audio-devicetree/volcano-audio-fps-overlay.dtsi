@@ -1,0 +1,119 @@
+/* fps audio dtsi */
+&lpass_cdc {
+       qcom,num-macros = <3>;
+};
+&wsa_macro {
+	status = "disabled";
+};
+&wsa883x_0221 {
+	status = "disabled";
+};
+&wsa883x_0222 {
+	status = "disabled";
+};
+&wsa_swr_gpios {
+	status = "disabled";
+};
+&wsa_spkr_en01 {
+	status = "disabled";
+};
+&wsa_spkr_en02 {
+	status = "disabled";
+};
+
+&spf_core_platform  {
+	cdc_sen_mi2s_gpios: sen_mi2s_pinctrl {
+		status = "okay";
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&lpi_i2s2_sck_active &lpi_i2s2_ws_active
+				&lpi_i2s2_sd0_active &lpi_i2s2_sd1_active>;
+		pinctrl-1 = <&lpi_i2s2_sck_sleep &lpi_i2s2_ws_sleep
+				&lpi_i2s2_sd0_sleep &lpi_i2s2_sd1_sleep>;
+		qcom,lpi-gpios;
+		qcom,tlmm-pins = <176 181>;
+		#gpio-cells = <0>;
+	};
+};
+&pineapple_snd {
+	qcom,mi2s-audio-intf = <1>;
+	qcom,wcd-disabled = <0>;
+	qcom,wsa-max-devs = <0>;
+	qcom,wcn-bt = <1>;
+	asoc-codec  = <&stub_codec>, <&lpass_cdc>,
+		      <&wcd9378_codec>;
+	asoc-codec-names = "msm-stub-codec.1", "lpass-cdc",
+			   "wcd9378_codec";
+
+	qcom,sen-mi2s-gpios = <&cdc_sen_mi2s_gpios>;
+
+	qcom,audio-routing =
+		"AMIC1", "Analog Mic1",
+		"AMIC1", "MIC BIAS1",
+		"AMIC2", "Analog Mic2",
+		"AMIC2", "MIC BIAS2",
+		"AMIC3", "Analog Mic3",
+		"AMIC3", "MIC BIAS3",
+		"AMIC4", "Analog Mic4",
+		"AMIC4", "MIC BIAS1",
+		"VA AMIC1", "Analog Mic1",
+		"VA AMIC1", "VA MIC BIAS1",
+		"VA AMIC2", "Analog Mic2",
+		"VA AMIC2", "VA MIC BIAS2",
+		"VA AMIC3", "Analog Mic3",
+		"VA AMIC3", "VA MIC BIAS3",
+		"VA AMIC4", "Analog Mic4",
+		"VA AMIC4", "VA MIC BIAS1",
+		"IN1_HPHL", "HPHL_OUT",
+		"IN2_HPHR", "HPHR_OUT",
+		"IN3_AUX", "AUX_OUT",
+		"RX_TX DEC0_INP", "TX DEC0 MUX",
+		"RX_TX DEC1_INP", "TX DEC1 MUX",
+		"RX_TX DEC2_INP", "TX DEC2 MUX",
+		"RX_TX DEC3_INP", "TX DEC3 MUX",
+		"VA SWR_INPUT", "VA_SWR_CLK",
+		"VA_AIF1 CAP", "VA_SWR_CLK",
+		"VA_AIF2 CAP", "VA_SWR_CLK",
+		"VA_AIF3 CAP", "VA_SWR_CLK";
+
+};
+
+/*aw882xx I2c is used GPIO_15 & GPIO_16 should define as I2C in QUPAC_Access.c * QUP_0 SE3  qup0_se3_l0 qup0_se3_l1*/
+&qupv3_se3_i2c {
+    status = "ok";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    aw882xx_smartpa@34 {
+    compatible = "awinic,aw882xx_smartpa";
+    reg = <0x34>;
+    pa-dvdd-supply = <&L10B>;
+    sync-load = <1>;
+    sound-channel = <0>;
+    aw-re-min = <4000>;
+    aw-re-max= <30000>;
+    aw-cali-mode = "none";
+    rename-flag = <1>;
+    status = "okay";
+    };
+    
+    aw882xx_smartpa@35 {
+    compatible = "awinic,aw882xx_smartpa";
+    reg = <0x35>;
+    pa-dvdd-supply = <&L10B>;
+    sync-load = <1>;
+    sound-channel = <1>;
+    aw-re-min = <4000>;
+    aw-re-max= <30000>;
+    aw-cali-mode = "none";
+    rename-flag = <1>;
+    status = "okay";
+    };
+    
+};
+
+
+&qupv3_se1_i2c {
+    status = "ok";
+};
+

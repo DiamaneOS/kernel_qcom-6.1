@@ -1,0 +1,14 @@
+#include "volcano-audio-overlay.dtsi"
+#include "volcano-audio-fps-overlay.dtsi"
+
+&fm_i2s0_gpios {
+	status = "disabled";
+};
+
+&pineapple_snd {
+	qcom,model = "volcano-mtp-wsa883x-snd-card";
+	qcom,sku-model = "volcano-mtp-wsa883x_sku1-snd-card";
+	nvmem-cells = <&adsp_variant>;
+	nvmem-cell-names = "adsp_variant";
+	//qcom,pri-mi2s-gpios = <&fm_i2s0_gpios>;
+};
