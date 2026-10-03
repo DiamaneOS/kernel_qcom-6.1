@@ -1,0 +1,4 @@
+[submodule "kernel_platform/common"]
+	path = kernel_platform/common
+	url = https://github.com/DiamaneOS/kernel_common-6.1
+	branch = android17
