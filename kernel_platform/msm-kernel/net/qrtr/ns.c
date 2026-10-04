@@ -84,6 +84,8 @@ struct qrtr_node {
  * requirement changes in the future, this value can be increased.
  */
 #define QRTR_NS_MAX_LOOKUPS 128
+/* One client port may not consume the whole shared lookup table. */
+#define QRTR_NS_MAX_CLIENT_LOOKUPS 32
 
 /* Max nodes, server, lookup limits are chosen based on the current platform
  * requirements. If the requirement changes in the future, these values can be
@@ -403,6 +405,10 @@ static int ctrl_cmd_bye(struct sockaddr_qrtr *from)
 	struct kvec iv;
 	int ret = 0;
 
+	/* Remote disconnect cleanup must never erase the local AP namespace. */
+	if (from->sq_node == qrtr_ns.local_node)
+		return -EPERM;
+
 	iv.iov_base = &pkt;
 	iv.iov_len = sizeof(pkt);
 
@@ -473,6 +479,8 @@ static int ctrl_cmd_del_client(struct sockaddr_qrtr *from,
 	iv.iov_len = sizeof(pkt);
 
 	/* Local DEL_CLIENT messages comes from the port being closed */
+	if (from->sq_node == qrtr_ns.local_node && node_id != from->sq_node)
+		return -EINVAL;
 	if (from->sq_node == qrtr_ns.local_node && from->sq_port != port)
 		return -EINVAL;
 
@@ -508,6 +516,11 @@ static int ctrl_cmd_del_client(struct sockaddr_qrtr *from,
 	pkt.client.port = cpu_to_le32(port);
 
 	xa_for_each(&local_node->servers, index, srv) {
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+		/* Local clients cannot reach the DCM role. Only relay remote ones. */
+		if (node_id == qrtr_ns.local_node && srv->port == QRTR_IMSDCM_PORT)
+			continue;
+#endif
 		sq.sq_family = AF_QIPCRTR;
 		sq.sq_node = srv->node;
 		sq.sq_port = srv->port;
@@ -541,6 +554,21 @@ static int ctrl_cmd_new_server(struct sockaddr_qrtr *from,
 		node_id = from->sq_node;
 		port = from->sq_port;
 	}
+
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+	if (node_id == qrtr_ns.local_node) {
+		struct qrtr_node *existing = xa_load(&nodes, node_id);
+		struct qrtr_server *old = existing ? xa_load(&existing->servers, port) : NULL;
+
+		if ((service == QRTR_IMSDCM_SERVICE_ID ||
+		     (old && old->service == QRTR_IMSDCM_SERVICE_ID)) &&
+		    !qrtr_imsdcm_port_owned(port))
+			return -EPERM;
+	} else if (service == QRTR_IMSDCM_SERVICE_ID) {
+		/* Only the AP publishes DCM. A remote record would shadow it. */
+		return -EPERM;
+	}
+#endif
 
 	srv = server_add(service, instance, node_id, port);
 	if (!srv)
@@ -588,6 +616,20 @@ static int ctrl_cmd_del_server(struct sockaddr_qrtr *from,
 	if (!node)
 		return -ENOENT;
 
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+	if (node_id == qrtr_ns.local_node) {
+		struct qrtr_server *old = xa_load(&node->servers, port);
+
+		/* Keep the record unless the role still owns the port. A late
+		 * DEL_SERVER from a closed role is dropped quietly. The role's
+		 * DEL_CLIENT, queued after it, removes the record.
+		 */
+		if (old && old->service == QRTR_IMSDCM_SERVICE_ID &&
+		    !qrtr_imsdcm_port_owned(port))
+			return 0;
+	}
+#endif
+
 	server_del(node, port, true);
 
 	return 0;
@@ -602,6 +644,7 @@ static int ctrl_cmd_new_lookup(struct sockaddr_qrtr *from,
 	struct qrtr_node *node;
 	unsigned long node_idx;
 	unsigned long srv_idx;
+	unsigned int count = 0;
 
 	/* Accept only local observers */
 	if (from->sq_node != qrtr_ns.local_node)
@@ -610,6 +653,16 @@ static int ctrl_cmd_new_lookup(struct sockaddr_qrtr *from,
 	if (qrtr_ns.lookup_count >= QRTR_NS_MAX_LOOKUPS) {
 		pr_err_ratelimited("QRTR client node exceeds max lookup limit!\n");
 		return -ENOSPC;
+	}
+
+	list_for_each_entry(lookup, &qrtr_ns.lookups, li) {
+		if (lookup->sq.sq_node == from->sq_node &&
+		    lookup->sq.sq_port == from->sq_port &&
+		    ++count >= QRTR_NS_MAX_CLIENT_LOOKUPS) {
+			pr_err_ratelimited("QRTR client 0x%x:0x%x exceeds lookup limit\n",
+					   from->sq_node, from->sq_port);
+			return -ENOSPC;
+		}
 	}
 
 	lookup = kzalloc(sizeof(*lookup), GFP_KERNEL);
@@ -710,6 +763,8 @@ static void qrtr_ns_worker(struct kthread_work *work)
 	for (;;) {
 		iv.iov_base = recv_buf;
 		iv.iov_len = recv_buf_size;
+		msg.msg_flags = 0;
+		msg.msg_namelen = sizeof(sq);
 
 		msglen = kernel_recvmsg(qrtr_ns.sock, &msg, &iv, 1,
 					iv.iov_len, MSG_DONTWAIT);
@@ -723,7 +778,11 @@ static void qrtr_ns_worker(struct kthread_work *work)
 		}
 
 		pkt = recv_buf;
+		if ((msg.msg_flags & MSG_TRUNC) || msglen < sizeof(pkt->cmd))
+			continue;
 		cmd = le32_to_cpu(pkt->cmd);
+		if (!qrtr_ctrl_min_size(cmd) || msglen < qrtr_ctrl_min_size(cmd))
+			continue;
 		if (cmd < ARRAY_SIZE(qrtr_ctrl_pkt_strings) &&
 		    qrtr_ctrl_pkt_strings[cmd])
 			trace_qrtr_ns_message(qrtr_ctrl_pkt_strings[cmd],
