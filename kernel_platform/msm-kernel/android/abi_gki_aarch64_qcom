@@ -4311,3 +4311,6 @@
   zs_pool_stats
   zstd_compress_bound
   zs_unmap_object
+  security_current_getsecid_subj
+  security_secid_to_secctx
+  security_release_secctx
