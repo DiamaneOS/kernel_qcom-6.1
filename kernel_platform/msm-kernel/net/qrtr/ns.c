@@ -403,6 +403,10 @@ static int ctrl_cmd_bye(struct sockaddr_qrtr *from)
 	struct kvec iv;
 	int ret = 0;
 
+	/* Remote disconnect cleanup must never erase the local AP namespace. */
+	if (from->sq_node == qrtr_ns.local_node)
+		return -EPERM;
+
 	iv.iov_base = &pkt;
 	iv.iov_len = sizeof(pkt);
 
@@ -473,6 +477,8 @@ static int ctrl_cmd_del_client(struct sockaddr_qrtr *from,
 	iv.iov_len = sizeof(pkt);
 
 	/* Local DEL_CLIENT messages comes from the port being closed */
+	if (from->sq_node == qrtr_ns.local_node && node_id != from->sq_node)
+		return -EINVAL;
 	if (from->sq_node == qrtr_ns.local_node && from->sq_port != port)
 		return -EINVAL;
 
@@ -542,6 +548,18 @@ static int ctrl_cmd_new_server(struct sockaddr_qrtr *from,
 		port = from->sq_port;
 	}
 
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+	if (node_id == qrtr_ns.local_node) {
+		struct qrtr_node *existing = xa_load(&nodes, node_id);
+		struct qrtr_server *old = existing ? xa_load(&existing->servers, port) : NULL;
+
+		if ((service == QRTR_IMSDCM_SERVICE_ID ||
+		     (old && old->service == QRTR_IMSDCM_SERVICE_ID)) &&
+		    !qrtr_imsdcm_port_owned(port))
+			return -EPERM;
+	}
+#endif
+
 	srv = server_add(service, instance, node_id, port);
 	if (!srv)
 		return -EINVAL;
@@ -587,6 +605,16 @@ static int ctrl_cmd_del_server(struct sockaddr_qrtr *from,
 	node = node_get(node_id);
 	if (!node)
 		return -ENOENT;
+
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+	if (node_id == qrtr_ns.local_node) {
+		struct qrtr_server *old = xa_load(&node->servers, port);
+
+		if (old && old->service == QRTR_IMSDCM_SERVICE_ID &&
+		    !qrtr_imsdcm_port_owned(port))
+			return -EPERM;
+	}
+#endif
 
 	server_del(node, port, true);
 
@@ -710,6 +738,8 @@ static void qrtr_ns_worker(struct kthread_work *work)
 	for (;;) {
 		iv.iov_base = recv_buf;
 		iv.iov_len = recv_buf_size;
+		msg.msg_flags = 0;
+		msg.msg_namelen = sizeof(sq);
 
 		msglen = kernel_recvmsg(qrtr_ns.sock, &msg, &iv, 1,
 					iv.iov_len, MSG_DONTWAIT);
@@ -723,7 +753,11 @@ static void qrtr_ns_worker(struct kthread_work *work)
 		}
 
 		pkt = recv_buf;
+		if ((msg.msg_flags & MSG_TRUNC) || msglen < sizeof(pkt->cmd))
+			continue;
 		cmd = le32_to_cpu(pkt->cmd);
+		if (!qrtr_ctrl_min_size(cmd) || msglen < qrtr_ctrl_min_size(cmd))
+			continue;
 		if (cmd < ARRAY_SIZE(qrtr_ctrl_pkt_strings) &&
 		    qrtr_ctrl_pkt_strings[cmd])
 			trace_qrtr_ns_message(qrtr_ctrl_pkt_strings[cmd],

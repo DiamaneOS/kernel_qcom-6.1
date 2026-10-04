@@ -14,6 +14,17 @@ config QRTR
 
 if QRTR
 
+config QRTR_IMSDCM_OWNERSHIP
+	bool "Restrict Android IMS DCM service publishers"
+	depends on SECURITY_SELINUX
+	help
+	  Protect local registration/removal of QMI IMS DCM service 0x302.
+	  Permanently reserve one ephemeral port for the single DCM instance.
+	  Userspace must have both the dedicated vendor_imsdcm UID and the
+	  diamaneos_imsdcm SELinux subject. Kernel name-service forwarding
+	  remains available. Enable only with the matching Android policy
+	  and UID allocation; other QRTR services and data are unchanged.
+
 config QRTR_NODE_ID
 	int "QRTR Local Node ID"
 	default 1

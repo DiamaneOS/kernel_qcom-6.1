@@ -14,6 +14,9 @@
 #include <linux/wait.h>
 #include <linux/rwsem.h>
 #include <linux/uidgid.h>
+#include <linux/cred.h>
+#include <linux/security.h>
+#include <linux/user_namespace.h>
 #include <linux/pm_wakeup.h>
 #include <linux/of_device.h>
 #include <linux/ipc_logging.h>
@@ -1064,6 +1067,34 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 	if (!size || len != ALIGN(size, 4) + hdrlen)
 		goto err;
 
+	/* An endpoint may bridge other remote nodes, but it can never impersonate
+	 * this AP's source identity or use its name-service port-zero alias.
+	 */
+	if (cb->src_node == qrtr_local_nid || cb->src_node == QRTR_NODE_BCAST ||
+	    !cb->src_port || !cb->dst_port)
+		goto err;
+	if (cb->dst_port == QRTR_PORT_CTRL || cb->type == QRTR_TYPE_DEL_PROC ||
+	    cb->type == QRTR_TYPE_RESUME_TX) {
+		const struct qrtr_ctrl_pkt *control = data + hdrlen;
+		u32 command;
+
+		if (size < sizeof(control->cmd))
+			goto err;
+		command = le32_to_cpu(control->cmd);
+		if (command != cb->type || !qrtr_ctrl_min_size(command) ||
+		    size < qrtr_ctrl_min_size(command))
+			goto err;
+		if ((command == QRTR_TYPE_NEW_SERVER || command == QRTR_TYPE_DEL_SERVER) &&
+		    le32_to_cpu(control->server.node) == qrtr_local_nid)
+			goto err;
+		if (command == QRTR_TYPE_DEL_CLIENT &&
+		    le32_to_cpu(control->client.node) == qrtr_local_nid)
+			goto err;
+		if (command == QRTR_TYPE_DEL_PROC &&
+		    le32_to_cpu(control->proc.node) == qrtr_local_nid)
+			goto err;
+	}
+
 	if ((cb->type == QRTR_TYPE_NEW_SERVER ||
 	     cb->type == QRTR_TYPE_RESUME_TX) &&
 	    size < sizeof(struct qrtr_ctrl_pkt))
@@ -1578,6 +1609,58 @@ static void qrtr_port_put(struct qrtr_sock *ipc)
 	sock_put(&ipc->sk);
 }
 
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+/* Stock QMI service ID and the Android vendor_imsdcm allocation selected by
+ * hardware/diamaneos/ims. Neither identity is supplied by the control payload.
+ */
+#define QRTR_IMSDCM_ANDROID_UID 2990
+
+static bool qrtr_imsdcm_publisher_allowed(struct sock *sk)
+{
+	static const char subject[] = "u:r:diamaneos_imsdcm:s0";
+	kuid_t owner = make_kuid(&init_user_ns, QRTR_IMSDCM_ANDROID_UID);
+	char *context = NULL;
+	u32 secid = 0, length = 0;
+	bool allowed = false;
+
+	/* Only sockets created by the kernel may forward name-service records.
+	 * A userspace sender cannot set this socket flag or forge its subject.
+	 */
+	if (sk->sk_kern_sock)
+		return true;
+	if (!uid_eq(current_uid(), owner) || !uid_eq(sock_i_uid(sk), owner))
+		return false;
+	security_current_getsecid_subj(&secid);
+	if (security_secid_to_secctx(secid, &context, &length))
+		return false;
+	if (context && (length == sizeof(subject) ||
+			length == sizeof(subject) - 1))
+		allowed = !memcmp(context, subject, sizeof(subject) - 1) &&
+			(length == sizeof(subject) - 1 ||
+			 context[sizeof(subject) - 1] == '\0');
+	if (context)
+		security_release_secctx(context, length);
+	return allowed;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+bool qrtr_imsdcm_port_owned(u32 port)
+{
+	struct qrtr_sock *ipc;
+	bool owned;
+
+	if (port != QRTR_IMSDCM_PORT)
+		return false;
+	ipc = qrtr_port_lookup(port);
+	if (!ipc)
+		return false;
+	owned = __kuid_val(sock_i_uid(&ipc->sk)) == QRTR_IMSDCM_ANDROID_UID;
+	qrtr_port_put(ipc);
+	return owned;
+}
+#endif
+
 static void qrtr_send_del_client(struct qrtr_sock *ipc)
 {
 	struct qrtr_ctrl_pkt *pkt;
@@ -1659,7 +1742,12 @@ static int qrtr_port_assign(struct qrtr_sock *ipc, int *port)
 
 	if (!*port) {
 		rc = xa_alloc_cyclic(&qrtr_ports, port, ipc,
-				     QRTR_EPH_PORT_RANGE, &qrtr_ports_next,
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+				     XA_LIMIT(QRTR_MIN_EPH_SOCKET, QRTR_IMSDCM_PORT - 1),
+#else
+				     QRTR_EPH_PORT_RANGE,
+#endif
+				     &qrtr_ports_next,
 				     GFP_ATOMIC);
 	} else if (*port < QRTR_MIN_EPH_SOCKET &&
 		   !(capable(CAP_NET_ADMIN) ||
@@ -1710,6 +1798,22 @@ static int __qrtr_bind(struct socket *sock,
 	unsigned long flags;
 	int port;
 	int rc;
+
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+	/* The reserved role owns this port even while unbound. Protect every
+	 * socket created by the role, including a borrowed FD before first bind.
+	 */
+	if (addr->sq_port == QRTR_IMSDCM_PORT ||
+	    __kuid_val(sock_i_uid(sk)) == QRTR_IMSDCM_ANDROID_UID ||
+	    (!zapped && ipc->us.sq_port == QRTR_IMSDCM_PORT)) {
+		if (!qrtr_imsdcm_publisher_allowed(sk))
+			return -EPERM;
+		/* A receive queue must never escape the reserved role via rebind. */
+		if (!zapped && ipc->us.sq_port == QRTR_IMSDCM_PORT &&
+		    addr->sq_port != QRTR_IMSDCM_PORT)
+			return -EPERM;
+	}
+#endif
 
 	/* rebinding ok */
 	if (!zapped && addr->sq_port == ipc->us.sq_port)
@@ -1902,6 +2006,24 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 		return -ENOTCONN;
 	}
 
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+	if (!sk->sk_kern_sock &&
+	    (ipc->us.sq_port == QRTR_IMSDCM_PORT ||
+	     __kuid_val(sock_i_uid(sk)) == QRTR_IMSDCM_ANDROID_UID) &&
+	    !qrtr_imsdcm_publisher_allowed(sk)) {
+		release_sock(sk);
+		return -EPERM;
+	}
+#endif
+
+	/* Port zero is the internal control-socket xarray key, never a wire
+	 * destination. Reject it for both addressed and connected sockets.
+	 */
+	if (!addr->sq_port) {
+		release_sock(sk);
+		return -EINVAL;
+	}
+
 	node = NULL;
 	srv_node = NULL;
 	if (addr->sq_node == QRTR_NODE_BCAST) {
@@ -1971,11 +2093,73 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	}
 
 	type = le32_to_cpu(qrtr_type);
+	if (addr->sq_port == QRTR_PORT_CTRL && !sk->sk_kern_sock) {
+		size_t minimum = qrtr_ctrl_min_size(type);
+
+		if (!minimum || len < minimum || type == QRTR_TYPE_BYE ||
+		    type == QRTR_TYPE_DEL_PROC) {
+			rc = -EINVAL;
+			kfree_skb(skb);
+			goto out_node;
+		}
+		if (type == QRTR_TYPE_DEL_CLIENT) {
+			struct qrtr_ctrl_pkt client = { 0 };
+
+			if (skb_copy_bits(skb, 0, &client, minimum) ||
+			    le32_to_cpu(client.client.node) != ipc->us.sq_node ||
+			    le32_to_cpu(client.client.port) != ipc->us.sq_port) {
+				rc = -EINVAL;
+				kfree_skb(skb);
+				goto out_node;
+			}
+		}
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+		if (type == QRTR_TYPE_DEL_CLIENT && ipc->us.sq_port == QRTR_IMSDCM_PORT &&
+		    !qrtr_imsdcm_publisher_allowed(sk)) {
+			rc = -EPERM;
+			kfree_skb(skb);
+			goto out_node;
+		}
+#endif
+	}
+	if (addr->sq_port == QRTR_PORT_CTRL &&
+	    (type == QRTR_TYPE_NEW_SERVER || type == QRTR_TYPE_DEL_SERVER)) {
+		/* Do not inspect or forward a truncated server record. */
+		if (len < sizeof(pkt) || skb_copy_bits(skb, 0, &pkt, sizeof(pkt))) {
+			rc = -EINVAL;
+			kfree_skb(skb);
+			goto out_node;
+		}
+		if (!sk->sk_kern_sock) {
+			pkt.server.node = cpu_to_le32(ipc->us.sq_node);
+			pkt.server.port = cpu_to_le32(ipc->us.sq_port);
+			if (skb_store_bits(skb, 0, &pkt, sizeof(pkt))) {
+				rc = -EINVAL;
+				kfree_skb(skb);
+				goto out_node;
+			}
+		}
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+		if ((le32_to_cpu(pkt.server.service) == QRTR_IMSDCM_SERVICE_ID ||
+		     ipc->us.sq_port == QRTR_IMSDCM_PORT) &&
+		    !qrtr_imsdcm_publisher_allowed(sk)) {
+			rc = -EPERM;
+			kfree_skb(skb);
+			goto out_node;
+		}
+		if (!sk->sk_kern_sock &&
+		    le32_to_cpu(pkt.server.service) == QRTR_IMSDCM_SERVICE_ID &&
+		    ipc->us.sq_port != QRTR_IMSDCM_PORT) {
+			rc = -EPERM;
+			kfree_skb(skb);
+			goto out_node;
+		}
+#endif
+	}
 	if (addr->sq_port == QRTR_PORT_CTRL && type == QRTR_TYPE_NEW_SERVER) {
 		ipc->state = QRTR_STATE_MULTI;
 
 		/* drop new server cmds that are not forwardable to dst node*/
-		skb_copy_bits(skb, 0, &pkt, sizeof(pkt));
 		srv_node = qrtr_node_lookup(pkt.server.node);
 		if (!qrtr_must_forward(srv_node, node, type)) {
 			rc = 0;
@@ -2040,6 +2224,14 @@ static int qrtr_recvmsg(struct socket *sock, struct msghdr *msg,
 	int copied, rc;
 
 
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+	if (!sk->sk_kern_sock &&
+	    (qrtr_sk(sk)->us.sq_port == QRTR_IMSDCM_PORT ||
+	     __kuid_val(sock_i_uid(sk)) == QRTR_IMSDCM_ANDROID_UID) &&
+	    !qrtr_imsdcm_publisher_allowed(sk))
+		return -EPERM;
+#endif
+
 	if (sock_flag(sk, SOCK_ZAPPED))
 		return -EADDRNOTAVAIL;
 
@@ -2049,6 +2241,16 @@ static int qrtr_recvmsg(struct socket *sock, struct msghdr *msg,
 
 	lock_sock(sk);
 	cb = (struct qrtr_cb *)skb->cb;
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+	if (!sk->sk_kern_sock &&
+	    (qrtr_sk(sk)->us.sq_port == QRTR_IMSDCM_PORT ||
+	     __kuid_val(sock_i_uid(sk)) == QRTR_IMSDCM_ANDROID_UID) &&
+	    !qrtr_imsdcm_publisher_allowed(sk)) {
+		rc = -EPERM;
+		goto out;
+	}
+#endif
+
 
 	copied = skb->len;
 	if (copied > size) {
