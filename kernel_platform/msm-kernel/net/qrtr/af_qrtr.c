@@ -1888,6 +1888,18 @@ static int qrtr_local_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 	struct sock *sk = skb->sk;
 	int rc;
 
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+	/* Modem data reaches the reserved DCM port through the node RX path.
+	 * Locally, only kernel sockets and the role itself may queue to it.
+	 * Ownerless kernel packets (sk == NULL) may come from atomic context.
+	 */
+	if (to->sq_port == QRTR_IMSDCM_PORT && sk &&
+	    !qrtr_imsdcm_publisher_allowed(sk)) {
+		kfree_skb(skb);
+		return -EPERM;
+	}
+#endif
+
 	ipc = qrtr_port_lookup(to->sq_port);
 	if (!ipc && to->sq_port == QRTR_PORT_CTRL) {
 		kfree_skb(skb);

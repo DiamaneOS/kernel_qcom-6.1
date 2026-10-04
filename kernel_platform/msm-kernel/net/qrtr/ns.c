@@ -84,6 +84,8 @@ struct qrtr_node {
  * requirement changes in the future, this value can be increased.
  */
 #define QRTR_NS_MAX_LOOKUPS 128
+/* One client port may not consume the whole shared lookup table. */
+#define QRTR_NS_MAX_CLIENT_LOOKUPS 32
 
 /* Max nodes, server, lookup limits are chosen based on the current platform
  * requirements. If the requirement changes in the future, these values can be
@@ -514,6 +516,11 @@ static int ctrl_cmd_del_client(struct sockaddr_qrtr *from,
 	pkt.client.port = cpu_to_le32(port);
 
 	xa_for_each(&local_node->servers, index, srv) {
+#if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
+		/* Local clients cannot reach the DCM role; only relay remote ones. */
+		if (node_id == qrtr_ns.local_node && srv->port == QRTR_IMSDCM_PORT)
+			continue;
+#endif
 		sq.sq_family = AF_QIPCRTR;
 		sq.sq_node = srv->node;
 		sq.sq_port = srv->port;
@@ -557,6 +564,9 @@ static int ctrl_cmd_new_server(struct sockaddr_qrtr *from,
 		     (old && old->service == QRTR_IMSDCM_SERVICE_ID)) &&
 		    !qrtr_imsdcm_port_owned(port))
 			return -EPERM;
+	} else if (service == QRTR_IMSDCM_SERVICE_ID) {
+		/* Only the AP publishes DCM; a remote record would shadow it. */
+		return -EPERM;
 	}
 #endif
 
@@ -610,9 +620,13 @@ static int ctrl_cmd_del_server(struct sockaddr_qrtr *from,
 	if (node_id == qrtr_ns.local_node) {
 		struct qrtr_server *old = xa_load(&node->servers, port);
 
+		/* Keep the record unless the role still owns the port. A late
+		 * DEL_SERVER from a closed role is dropped quietly; the role's
+		 * DEL_CLIENT, queued after it, removes the record.
+		 */
 		if (old && old->service == QRTR_IMSDCM_SERVICE_ID &&
 		    !qrtr_imsdcm_port_owned(port))
-			return -EPERM;
+			return 0;
 	}
 #endif
 
@@ -630,6 +644,7 @@ static int ctrl_cmd_new_lookup(struct sockaddr_qrtr *from,
 	struct qrtr_node *node;
 	unsigned long node_idx;
 	unsigned long srv_idx;
+	unsigned int count = 0;
 
 	/* Accept only local observers */
 	if (from->sq_node != qrtr_ns.local_node)
@@ -638,6 +653,16 @@ static int ctrl_cmd_new_lookup(struct sockaddr_qrtr *from,
 	if (qrtr_ns.lookup_count >= QRTR_NS_MAX_LOOKUPS) {
 		pr_err_ratelimited("QRTR client node exceeds max lookup limit!\n");
 		return -ENOSPC;
+	}
+
+	list_for_each_entry(lookup, &qrtr_ns.lookups, li) {
+		if (lookup->sq.sq_node == from->sq_node &&
+		    lookup->sq.sq_port == from->sq_port &&
+		    ++count >= QRTR_NS_MAX_CLIENT_LOOKUPS) {
+			pr_err_ratelimited("QRTR client 0x%x:0x%x exceeds lookup limit\n",
+					   from->sq_node, from->sq_port);
+			return -ENOSPC;
+		}
 	}
 
 	lookup = kzalloc(sizeof(*lookup), GFP_KERNEL);
