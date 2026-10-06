@@ -2110,8 +2110,9 @@ void dp_rx_flush_rx_cached(struct dp_peer *peer, bool drop)
 		return;
 
 	if (!peer->txrx_peer) {
-		dp_err("txrx_peer NULL!! peer mac_addr("QDF_MAC_ADDR_FMT")",
-			QDF_MAC_ADDR_REF(peer->mac_addr.raw));
+		/* DiamaneOS: the peer id, not the MAC (here often the
+		 * phone's own address, the factory MAC). */
+		dp_err("txrx_peer NULL!! peer_id %u", peer->peer_id);
 		return;
 	}
 
