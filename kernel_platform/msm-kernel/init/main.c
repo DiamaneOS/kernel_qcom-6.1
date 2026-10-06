@@ -1064,24 +1064,16 @@ static void __init print_kernel_cmdline(const char *cmdline)
 }
 
 /*
- * Print the command line without the values of parameters passed to user
- * space: those in init's environment and everything after "--". Tokens are
- * split as next_arg() splits them. Call it after the command line has been
- * parsed, when the environment is complete.
+ * Copy the command line to @d without the values of parameters passed to
+ * user space: those in init's environment and everything after "--". With
+ * @modules_only, drop the values of kernel parameters too and keep only
+ * those of module options ("module.param=value"). Tokens are split as
+ * next_arg() splits them.
  */
-static void __init print_kernel_cmdline_names(const char *cmdline)
+static void __init copy_cmdline_names(char *d, const char *s, bool modules_only)
 {
-	size_t size = strlen(cmdline) + 1;
 	bool init_args = false;
-	const char *s = cmdline;
-	char *out, *d;
 
-	out = memblock_alloc(size, SMP_CACHE_BYTES);
-	if (!out) {
-		pr_err("%s: Failed to allocate %zu bytes\n", __func__, size);
-		return;
-	}
-	d = out;
 	while (*s) {
 		const char *start = s, *name = s, *equals = NULL, *end;
 		bool in_quote = false;
@@ -1106,7 +1098,8 @@ static void __init print_kernel_cmdline_names(const char *cmdline)
 				init_args = true;
 		} else if (equals > name &&
 			   (init_args || panic_later ||
-			    passed_to_init_env(name, equals - name))) {
+			    (modules_only ? !memchr(name, '.', equals - name) :
+			     passed_to_init_env(name, equals - name)))) {
 			start = name;
 			end = equals;
 		}
@@ -1114,8 +1107,35 @@ static void __init print_kernel_cmdline_names(const char *cmdline)
 		d += end - start;
 	}
 	*d = '\0';
+}
+
+/* What /proc/cmdline shows once init runs; set up below. */
+static char *names_command_line __ro_after_init;
+
+/*
+ * Print the command line without the values of parameters passed to user
+ * space, and prepare the copy /proc/cmdline shows from init on: names only,
+ * except the values of module options, which Android's modprobe reads from
+ * /proc/cmdline. The kernel has used every other value by then, and the
+ * bootloader's values can carry device identifiers (the Fairphone 6 passes
+ * the Wi-Fi MAC address), which bug reports would copy. Call it after the
+ * command line has been parsed, when the environment is complete.
+ */
+static void __init print_kernel_cmdline_names(const char *cmdline)
+{
+	size_t size = strlen(cmdline) + 1;
+	char *out;
+
+	out = memblock_alloc(size, SMP_CACHE_BYTES);
+	if (!out) {
+		pr_err("%s: Failed to allocate %zu bytes\n", __func__, size);
+		return;
+	}
+	copy_cmdline_names(out, cmdline, false);
 	print_kernel_cmdline(out);
-	memblock_free(out, size);
+	/* Dropping values only shortens the line, so the buffer fits. */
+	copy_cmdline_names(out, cmdline, true);
+	names_command_line = out;
 }
 
 #ifdef CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE
@@ -1746,6 +1766,13 @@ static int __ref kernel_init(void *unused)
 	rcu_end_inkernel_boot();
 
 	do_sysctl_args();
+
+	/*
+	 * The initcalls and do_sysctl_args() have read their parameters from
+	 * saved_command_line; user space gets the names-only copy.
+	 */
+	if (names_command_line)
+		saved_command_line = names_command_line;
 
 	if (ramdisk_execute_command) {
 		ret = run_init_process(ramdisk_execute_command);
