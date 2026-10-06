@@ -2196,7 +2196,8 @@
 		reg-names = "eud_base", "eud_mode_mgr2";
 		qcom,secure-eud-en;
 		qcom,eud-utmi-delay = /bits/ 16 <255>;
-		status = "ok";
+		/* Debug access over USB: never used on a phone in use. */
+		status = "disabled";
 	};
 
 	ramoops_mem: ramoops_region {

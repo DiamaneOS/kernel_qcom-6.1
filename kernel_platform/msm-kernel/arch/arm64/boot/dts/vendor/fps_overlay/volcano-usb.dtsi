@@ -32,7 +32,11 @@
 		qcom,dis-sending-cm-l1-quirk;
 		qcom,use-eusb2-phy;
 
-		extcon = <&eud>;
+		/*
+		 * Connect and role events come from the Type-C port through
+		 * UCSI: the role switch and the port graph below. No extcon:
+		 * the only one was the EUD debugger's, which is off.
+		 */
 		usb-role-switch;
 
 		qcom,core-clk-rate = <133333333>;
