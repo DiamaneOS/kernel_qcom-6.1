@@ -5,10 +5,12 @@
  */
 
 #include <linux/module.h>
+#include <linux/slab.h>
 #include "cam_cci_core.h"
 #include "cam_cci_dev.h"
 #include "cam_req_mgr_workq.h"
 #include "cam_common_util.h"
+#include "cam_cci_privsw.h"
 
 static int32_t cam_cci_convert_type_to_num_bytes(
 	enum camera_sensor_i2c_type type)
@@ -2003,6 +2005,34 @@ rel_mutex_q:
 	return rc;
 }
 
+/*
+ * Camera floor: after a userspace write to a protected sensor while the
+ * cameras are blocked, write the pattern again on the same queue, so no
+ * write (a reset, a new mode) leaves the sensor sending the scene.
+ */
+static void cam_cci_privsw_follow(struct cci_device *cci_dev,
+	struct cam_cci_ctrl *c_ctrl, enum cci_i2c_queue_t queue)
+{
+	struct cam_sensor_i2c_reg_array regs[CCI_PRIVSW_PATTERN_MAX];
+	enum cci_i2c_master_t master = c_ctrl->cci_info->cci_i2c_master;
+	struct cam_cci_ctrl pattern;
+	int32_t rc;
+
+	if (!cam_cci_privsw_pattern(cci_dev, c_ctrl, &pattern, regs))
+		return;
+	reinit_completion(&cci_dev->cci_master_info[master].report_q[queue]);
+	reinit_completion(&cci_dev->cci_master_info[master].th_burst_complete[queue]);
+	rc = cam_cci_validate_queue(cci_dev,
+		cci_dev->cci_i2c_queue_info[master][queue].max_queue_size - 1,
+		master, queue);
+	if (rc >= 0)
+		rc = cam_cci_data_queue(cci_dev, &pattern, queue, MSM_SYNC_DISABLE);
+	if (rc < 0)
+		CAM_WARN_RATE_LIMIT(CAM_CCI,
+			"CCI%d_I2C_M%d_Q%d camera floor: pattern write failed: %d",
+			cci_dev->soc_info.index, master, queue, rc);
+}
+
 static int32_t cam_cci_i2c_write(struct v4l2_subdev *sd,
 	struct cam_cci_ctrl *c_ctrl, enum cci_i2c_queue_t queue,
 	enum cci_i2c_sync sync_en)
@@ -2079,6 +2109,7 @@ static int32_t cam_cci_i2c_write(struct v4l2_subdev *sd,
 			goto ERROR;
 		}
 	}
+	cam_cci_privsw_follow(cci_dev, c_ctrl, queue);
 
 ERROR:
 	mutex_lock(&cci_dev->cci_master_info[master].freq_cnt_lock);
@@ -2470,6 +2501,12 @@ static int32_t cam_cci_write(struct v4l2_subdev *sd,
 	return rc;
 }
 
+int32_t cam_cci_privsw_write(struct cci_device *cci_dev,
+	struct cam_cci_ctrl *ctrl)
+{
+	return cam_cci_write(&cci_dev->v4l2_dev_str.sd, ctrl);
+}
+
 int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	struct cam_cci_ctrl *cci_ctrl)
 {
@@ -2529,9 +2566,26 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	case MSM_CCI_I2C_WRITE_BURST:
 	case MSM_CCI_I2C_WRITE_SYNC:
 	case MSM_CCI_I2C_WRITE_ASYNC:
-	case MSM_CCI_I2C_WRITE_SYNC_BLOCK:
+	case MSM_CCI_I2C_WRITE_SYNC_BLOCK: {
+		struct cam_sensor_i2c_reg_array *orig, *copy = NULL;
+
+		/* Camera floor: protected sensors keep their test pattern. */
+		rc = cam_cci_privsw_filter(cci_dev, cci_ctrl, &copy);
+		if (rc > 0) {
+			rc = 0;
+			break;
+		}
+		if (rc < 0)
+			break;
+		orig = cci_ctrl->cfg.cci_i2c_write_cfg.reg_setting;
+		if (copy)
+			cci_ctrl->cfg.cci_i2c_write_cfg.reg_setting = copy;
 		rc = cam_cci_write(sd, cci_ctrl);
+		/* Asynchronous writes copied the settings already. */
+		cci_ctrl->cfg.cci_i2c_write_cfg.reg_setting = orig;
+		kfree(copy);
 		break;
+	}
 	case MSM_CCI_GPIO_WRITE:
 		break;
 	case MSM_CCI_SET_SYNC_CID:

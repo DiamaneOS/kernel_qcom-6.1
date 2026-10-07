@@ -5,6 +5,7 @@
  */
 
 #include "cam_cci_dev.h"
+#include "cam_cci_privsw.h"
 #include "cam_req_mgr_dev.h"
 #include "cam_cci_soc.h"
 #include "cam_cci_core.h"
@@ -771,6 +772,7 @@ static int cam_cci_component_bind(struct device *dev,
 	}
 	head = 0;
 	tail = 0;
+	cam_cci_privsw_add(new_cci_dev);
 	CAM_DBG(CAM_CCI, "Component bound successfully");
 	return rc;
 
@@ -806,6 +808,7 @@ static void cam_cci_component_unbind(struct device *dev,
 		return;
 	}
 
+	cam_cci_privsw_remove(cci_dev);
 	cam_cpas_unregister_client(cci_dev->cpas_handle);
 	debugfs_root = NULL;
 	cam_cci_soc_remove(pdev, cci_dev);
@@ -859,12 +862,22 @@ struct platform_driver cci_driver = {
 
 int cam_cci_init_module(void)
 {
-	return platform_driver_register(&cci_driver);
+	int rc;
+
+	/* Camera floor: without the privacy switch the cameras do not start. */
+	rc = cam_cci_privsw_init();
+	if (rc)
+		return rc;
+	rc = platform_driver_register(&cci_driver);
+	if (rc)
+		cam_cci_privsw_exit();
+	return rc;
 }
 
 void cam_cci_exit_module(void)
 {
 	platform_driver_unregister(&cci_driver);
+	cam_cci_privsw_exit();
 }
 
 MODULE_DESCRIPTION("MSM CCI driver");

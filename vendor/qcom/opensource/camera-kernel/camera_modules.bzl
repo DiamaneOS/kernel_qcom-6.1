@@ -197,6 +197,7 @@ def _define_module(target, variant, lunch_target=None):
                     "drivers/cam_sensor_module/cam_actuator/cam_actuator_soc.c",
                     "drivers/cam_sensor_module/cam_cci/cam_cci_dev.c",
                     "drivers/cam_sensor_module/cam_cci/cam_cci_core.c",
+                    "drivers/cam_sensor_module/cam_cci/cam_cci_privsw.c",
                     "drivers/cam_sensor_module/cam_cci/cam_cci_soc.c",
                     "drivers/cam_sensor_module/cam_tpg/cam_tpg_dev.c",
                     "drivers/cam_sensor_module/cam_tpg/cam_tpg_core.c",
