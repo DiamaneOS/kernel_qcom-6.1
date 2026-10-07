@@ -38,6 +38,7 @@
 #include <linux/mutex.h>
 #include <linux/workqueue.h>
 #include <linux/miscdevice.h>
+#include <linux/notifier.h>
 #include <linux/wait.h>
 #include <linux/time.h>
 
@@ -204,6 +205,9 @@ struct stmvl53l1_data {
 	bool is_device_remove;	/*!< true when device has been remove */
 
 	struct mutex work_mutex; /*!< main dev mutex/lock */;
+	/* Camera floor: no ranging while the privacy switch blocks the cameras */
+	bool privsw_blocked;	/*!< under work_mutex */
+	struct notifier_block privsw_nb;
 	struct delayed_work	dwork;
 	/*!< work for pseudo irq polling check  */
 

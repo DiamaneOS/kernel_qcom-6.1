@@ -15,6 +15,7 @@
  * main file
  */
 #include <linux/uaccess.h>
+#include <linux/diamaneos_privsw.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -2432,6 +2433,13 @@ static int ctrl_start(struct stmvl53l1_data *data)
 
 	vl53l1_dbgmsg(" state = %d\n", data->enable_sensor);
 
+	/* Camera floor: no ranging (a presence sensor) while blocked. */
+	if (data->privsw_blocked) {
+		vl53l1_errmsg("ranging refused: the privacy switch blocks the cameras\n");
+		rc = -EBUSY;
+		goto done;
+	}
+
 	/* turn on tof sensor only if it's not already started */
 	if (data->enable_sensor == 0 && !data->is_calibrating) {
 		/* to start */
@@ -3467,6 +3475,12 @@ static int stmvl53l1_ioctl_handler(
 	if (!data)
 		return -EINVAL;
 
+	/* Camera floor: raw register access and calibration can range too. */
+	if (READ_ONCE(data->privsw_blocked) &&
+	    (cmd == VL53L1_IOCTL_REGISTER ||
+	     cmd == VL53L1_IOCTL_PERFORM_CALIBRATION))
+		return -EBUSY;
+
 	switch (cmd) {
 
 	case VL53L1_IOCTL_START:
@@ -4178,6 +4192,21 @@ int stmvl53l1_intr_handler(struct stmvl53l1_data *data)
  * @param	data The device data
  * @return	0 on success
  */
+/* Camera floor: stop ranging when the privacy switch blocks the cameras. */
+static int stmvl53l1_privsw_event(struct notifier_block *nb,
+		unsigned long action, void *unused)
+{
+	struct stmvl53l1_data *data = container_of(nb, struct stmvl53l1_data,
+						   privsw_nb);
+
+	mutex_lock(&data->work_mutex);
+	data->privsw_blocked = action == PRIVSW_BLOCK;
+	if (data->privsw_blocked && data->enable_sensor)
+		_ctrl_stop(data);
+	mutex_unlock(&data->work_mutex);
+	return NOTIFY_OK;
+}
+
 int stmvl53l1_setup(struct stmvl53l1_data *data)
 {
 	int rc = 0;
@@ -4342,10 +4371,17 @@ int stmvl53l1_setup(struct stmvl53l1_data *data)
 
 	data->miscdev.name = data->name;
 	data->miscdev.fops = &stmvl53l1_ranging_fops;
+	data->privsw_nb.notifier_call = stmvl53l1_privsw_event;
+	rc = privsw_register_client(PRIVSW_CAMERA, &data->privsw_nb);
+	if (rc) {
+		vl53l1_errmsg("camera floor registration failed %d\n", rc);
+		goto exit_unregister_dev_ps;
+	}
 	vl53l1_errmsg("Misc device registration name:%s\n", data->miscdev.name);
 	rc = misc_register(&data->miscdev);
 	if (rc != 0) {
 		vl53l1_errmsg("misc dev reg fail\n");
+		privsw_unregister_client(PRIVSW_CAMERA, &data->privsw_nb);
 		goto exit_unregister_dev_ps;
 	}
 	/* bring back device under reset */
@@ -4374,6 +4410,7 @@ void stmvl53l1_cleanup(struct stmvl53l1_data *data)
 	int rc;
 
 	vl53l1_dbgmsg("enter\n");
+	privsw_unregister_client(PRIVSW_CAMERA, &data->privsw_nb);
 	rc = _ctrl_stop(data);
 	if (rc < 0)
 		vl53l1_errmsg("stop failed %d aborting anyway\n", rc);
