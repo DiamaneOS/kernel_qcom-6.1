@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config DIAMANEOS_PRIVSW
+	tristate "DiamaneOS privacy switch"
+	depends on GPIOLIB && INPUT && OF
+	help
+	  Driver for a hardware slider that blocks the built-in sensors. It
+	  reports the slider as an input switch and tells the sensor drivers
+	  that register with it when to block their hardware. The policy is
+	  written once at boot through /sys/kernel/privacy_switch/policy.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called diamaneos_privsw.
+
+config DIAMANEOS_PRIVSW_KUNIT_TEST
+	tristate "KUnit tests for the DiamaneOS privacy switch" if !KUNIT_ALL_TESTS
+	depends on KUNIT
+	default KUNIT_ALL_TESTS
+	help
+	  Tests the privacy switch's policy seal, fail-closed defaults and
+	  debounce rules. They need no hardware.

@@ -113,3 +113,4 @@ qcom-dload-mode.ko
 haptic.ko
 emkit_info.ko
 hall_det.ko
+diamaneos_privsw.ko
