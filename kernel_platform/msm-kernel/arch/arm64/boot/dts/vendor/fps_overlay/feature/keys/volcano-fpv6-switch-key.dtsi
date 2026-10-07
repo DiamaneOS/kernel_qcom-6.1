@@ -15,20 +15,21 @@
 };
 
 &soc {
-	gpio_keys {
-		compatible = "gpio-keys";
-		label = "gpio-keys";
+	/*
+	 * The Moments switch, owned by the DiamaneOS privacy switch driver
+	 * (drivers/misc/diamaneos_privsw). It reports EV_SW 15 as gpio-keys did
+	 * (1 = upper position, line low). In the lower position (0) it blocks
+	 * the built-in microphones in the kernel when armed at boot. No
+	 * linux,can-disable: nothing can mute the switch from sysfs.
+	 */
+	privacy_switch: privacy-switch {
+		compatible = "de.diamaneos,privacy-switch";
 		pinctrl-names = "default";
 		pinctrl-0 = <&fpv6_switch_key_active>;
-
-		fpv6_switch {
-			label = "fpv6_switch";
-			gpios = <&tlmm 107 GPIO_ACTIVE_LOW>;
-			linux,input-type = <0x05>; /* EV_SW */
-			linux,code = <0xf>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-			linux,can-disable;
-		};
+		switch-gpios = <&tlmm 107 GPIO_ACTIVE_LOW>;
+		linux,code = <0xf>; /* SW_PEN_INSERTED */
+		de.diamaneos,blocking-value = <0>;
+		debounce-interval = <15>;
+		wakeup-source;
 	};
 };
