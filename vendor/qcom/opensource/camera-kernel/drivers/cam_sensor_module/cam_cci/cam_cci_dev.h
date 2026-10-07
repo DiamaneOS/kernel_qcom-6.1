@@ -33,6 +33,7 @@
 #include "cam_soc_util.h"
 #include "cam_debug_util.h"
 #include "cam_req_mgr_workq.h"
+#include "cam_cci_privsw_core.h"
 #include "cam_common_util.h"
 
 #define CCI_I2C_QUEUE_0_SIZE 128
@@ -213,6 +214,29 @@ enum cam_cci_state_t {
  * @dump_en:                    To enable the selective dump
  * @is_probing:                 Flag to determine if we are probing a sensor
  */
+struct cam_sensor_cci_client {
+	struct v4l2_subdev *cci_subdev;
+	uint32_t freq;
+	enum i2c_freq_mode i2c_freq_mode;
+	enum cci_i2c_master_t cci_i2c_master;
+	uint16_t sid;
+	uint16_t cid;
+	uint32_t timeout;
+	uint16_t retries;
+	uint16_t id_map;
+	uint16_t cci_device;
+	bool is_probing;
+};
+
+/* Camera floor: one protected image sensor seen on this CCI (cam_cci_privsw.c). */
+#define CAM_CCI_PRIVSW_SLOTS	4
+struct cam_cci_privsw_slot {
+	const struct cci_privsw_sensor *sensor;
+	enum cci_i2c_master_t master;
+	struct cam_sensor_cci_client client;	/* the last writer's I2C settings */
+	struct cci_privsw_state st;
+};
+
 struct cci_device {
 	struct v4l2_subdev subdev;
 	struct cam_hw_soc_info soc_info;
@@ -244,6 +268,10 @@ struct cci_device {
 	struct mutex init_mutex;
 	uint64_t  dump_en;
 	bool is_probing;
+	/* Camera floor (cam_cci_privsw.c), under privsw_lock */
+	struct list_head privsw_node;
+	struct mutex privsw_lock;
+	struct cam_cci_privsw_slot privsw_slots[CAM_CCI_PRIVSW_SLOTS];
 };
 
 enum cam_cci_i2c_cmd_type {
@@ -279,19 +307,6 @@ enum cam_cci_gpio_cmd_type {
 	CCI_GPIO_INVALID_CMD,
 };
 
-struct cam_sensor_cci_client {
-	struct v4l2_subdev *cci_subdev;
-	uint32_t freq;
-	enum i2c_freq_mode i2c_freq_mode;
-	enum cci_i2c_master_t cci_i2c_master;
-	uint16_t sid;
-	uint16_t cid;
-	uint32_t timeout;
-	uint16_t retries;
-	uint16_t id_map;
-	uint16_t cci_device;
-	bool is_probing;
-};
 
 struct cam_cci_ctrl {
 	int32_t status;
@@ -304,6 +319,8 @@ struct cam_cci_ctrl {
 		struct cam_cci_gpio_cfg gpio_cfg;
 	} cfg;
 	bool is_probing;
+	/* Camera floor: a write the kernel issues itself; not filtered again. */
+	bool privsw_internal;
 };
 
 struct cci_write_async {
