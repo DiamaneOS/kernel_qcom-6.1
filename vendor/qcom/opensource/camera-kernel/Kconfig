@@ -120,3 +120,14 @@ config DYNAMIC_FD_PORT_CONFIG
 		feature that allows the userspace to configure
 		the FD port to secure or non-secure based on
 		the FD solution in use in secure camera use cases.
+
+config SPECTRA_CDM_REACH_PROBE
+	bool "Test only: probe how far the TFE's CDM reaches"
+	depends on SPECTRA_TFE
+	help
+	  Test builds only; never set in a release configuration. Adds the
+	  module parameters cdm_reach_probe_* to camera.ko: once armed, the
+	  next TFE configuration runs one kernel-made CDM command buffer that
+	  writes a chosen register outside the TFE wrapper, to find out
+	  whether the camera HAL's unchecked command buffers could reach the
+	  CCI. See cam_tfe_cdm_reach_probe.c.

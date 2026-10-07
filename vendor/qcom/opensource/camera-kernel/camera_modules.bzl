@@ -164,6 +164,9 @@ def _define_module(target, variant, lunch_target=None):
                     "drivers/cam_isp/isp_hw_mgr/cam_tfe_hw_mgr.c",
                 ],
             },
+            "CONFIG_SPECTRA_CDM_REACH_PROBE": {
+                True: ["drivers/cam_isp/isp_hw_mgr/cam_tfe_cdm_reach_probe.c"],
+            },
             "CONFIG_SPECTRA_JPEG": {
                 True: [
                     "drivers/cam_jpeg/jpeg_hw/jpeg_enc_hw/jpeg_enc_dev.c",

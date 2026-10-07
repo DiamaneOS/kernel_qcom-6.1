@@ -21,6 +21,7 @@
 #include "cam_tfe_hw_mgr.h"
 #include "cam_cdm_intf_api.h"
 #include "cam_cdm_util.h"
+#include "cam_tfe_cdm_reach_probe.h"
 #include "cam_packet_util.h"
 #include "cam_debug_util.h"
 #include "cam_cpas_api.h"
@@ -3265,6 +3266,10 @@ static int cam_tfe_mgr_config_hw(void *hw_mgr_priv,
 	}
 
 	cdm_cmd->cmd_arrary_count = cfg->num_hw_update_entries - skip;
+	/* Test builds only: compiled out of release configurations. */
+	cdm_cmd->cmd_arrary_count = cam_tfe_cdm_reach_probe(cdm_cmd,
+		cdm_cmd->cmd_arrary_count, CAM_ISP_CTX_CFG_MAX,
+		g_tfe_hw_mgr.mgr_common.cmd_iommu_hdl);
 	reinit_completion(&ctx->config_done_complete);
 	ctx->applied_req_id = cfg->request_id;
 	CAM_DBG(CAM_ISP, "Submit to CDM");
