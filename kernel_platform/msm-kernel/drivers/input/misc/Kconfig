@@ -952,6 +952,7 @@ config INPUT_STPMIC1_ONKEY
 config STMVL53L1
        tristate "STM VL53L3 Proximity support"
        depends on I2C=y
+       depends on DIAMANEOS_PRIVSW
        default n
        help
          Say Y here if you want to use STMicroelectronics's vl53L3 TOF AF sensor
