@@ -149,6 +149,9 @@ struct wcd9378_priv {
 	//#ifdef CONFIG_T2M_SND_HAC
 	struct device_node *hac_pa_gpio_p;
 	//#endif
+	/* Mic floor: biases held off while the privacy switch blocks, under micb_lock */
+	bool privsw_blocked;
+	struct notifier_block privsw_nb;
 };
 
 struct wcd9378_micbias_setting {

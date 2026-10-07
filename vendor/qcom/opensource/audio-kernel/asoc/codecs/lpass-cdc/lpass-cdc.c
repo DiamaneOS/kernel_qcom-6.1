@@ -19,7 +19,9 @@
 #include "lpass-cdc.h"
 #include "internal.h"
 #include "lpass-cdc-clk-rsc.h"
+#include "lpass-cdc-privsw.h"
 #include <linux/qti-regmap-debugfs.h>
+#include <linux/diamaneos_privsw.h>
 
 #define DRV_NAME "lpass-cdc"
 
@@ -147,7 +149,8 @@ static int __lpass_cdc_reg_write(struct lpass_cdc_priv *priv,
 		}
 	}
 	lpass_cdc_ahb_write_device(
-		priv->macro_params[macro_id].io_base, reg, val);
+		priv->macro_params[macro_id].io_base, reg,
+		lpass_cdc_privsw_filter(priv->privsw_mute, macro_id, reg, val));
 
 vote_err:
 	if (priv->macro_params[VA_MACRO].dev) {
@@ -1296,6 +1299,69 @@ err:
 	return;
 }
 
+/*
+ * Mic floor. While the privacy switch blocks the microphones, every write to
+ * a TX or VA decimator's TX_PATH_CTL gets the PGA mute bit (see
+ * __lpass_cdc_reg_write), whoever asks: DAPM, the delayed unmute, mixer
+ * controls, cache syncs after power collapse or SSR. The streams keep
+ * running and deliver zeros. The regmap cache keeps the values that were
+ * asked for, so the driver and userspace read back their own values, and
+ * unblocking writes them out again.
+ */
+static_assert(LPASS_CDC_PRIVSW_TX_MACRO == TX_MACRO &&
+	      LPASS_CDC_PRIVSW_VA_MACRO == VA_MACRO);
+
+/* After the switch moves back: the mic biases ramp up first, as at stream start. */
+#define LPASS_CDC_PRIVSW_RESTORE_MS	100
+
+static void lpass_cdc_privsw_rewrite(struct lpass_cdc_priv *priv)
+{
+	unsigned int n, reg, val;
+
+	for (n = 0; n < LPASS_CDC_PRIVSW_ALL_DECS; n++) {
+		reg = lpass_cdc_privsw_dec_ctl_reg(n);
+		/* The cached value: what was last asked for. */
+		if (regmap_read(priv->regmap, reg, &val))
+			continue;
+		regmap_write(priv->regmap, reg, val);
+	}
+}
+
+static void lpass_cdc_privsw_set_mute(struct lpass_cdc_priv *priv, bool mute)
+{
+	mutex_lock(&priv->clk_lock);
+	priv->privsw_mute = mute;
+	mutex_unlock(&priv->clk_lock);
+	lpass_cdc_privsw_rewrite(priv);
+	dev_info(priv->dev, "mic floor: decimators %s\n",
+		 mute ? "held muted" : "released");
+}
+
+static void lpass_cdc_privsw_restore(struct work_struct *work)
+{
+	struct lpass_cdc_priv *priv = container_of(to_delayed_work(work),
+			struct lpass_cdc_priv, privsw_restore_work);
+
+	lpass_cdc_privsw_set_mute(priv, false);
+}
+
+static int lpass_cdc_privsw_event(struct notifier_block *nb,
+				  unsigned long action, void *data)
+{
+	struct lpass_cdc_priv *priv = container_of(nb, struct lpass_cdc_priv,
+						   privsw_nb);
+
+	if (action == PRIVSW_BLOCK) {
+		cancel_delayed_work_sync(&priv->privsw_restore_work);
+		if (!priv->privsw_mute)
+			lpass_cdc_privsw_set_mute(priv, true);
+	} else if (priv->privsw_mute) {
+		schedule_delayed_work(&priv->privsw_restore_work,
+				msecs_to_jiffies(LPASS_CDC_PRIVSW_RESTORE_MS));
+	}
+	return NOTIFY_OK;
+}
+
 static int lpass_cdc_probe(struct platform_device *pdev)
 {
 	struct lpass_cdc_priv *priv;
@@ -1364,6 +1430,17 @@ static int lpass_cdc_probe(struct platform_device *pdev)
 	INIT_WORK(&priv->lpass_cdc_add_child_devices_work,
 		  lpass_cdc_add_child_devices);
 
+	/* Before the mic floor's first block: ahead of the WCD bias layer. */
+	INIT_DELAYED_WORK(&priv->privsw_restore_work, lpass_cdc_privsw_restore);
+	priv->privsw_nb.notifier_call = lpass_cdc_privsw_event;
+	priv->privsw_nb.priority = 10;
+	ret = privsw_register_client(PRIVSW_MIC, &priv->privsw_nb);
+	if (ret) {
+		dev_err(&pdev->dev, "%s: mic floor registration failed: %d\n",
+			__func__, ret);
+		return ret;
+	}
+
 	/* Register LPASS core hw vote */
 	lpass_core_hw_vote = devm_clk_get(&pdev->dev, "lpass_core_hw_vote");
 	if (IS_ERR(lpass_core_hw_vote)) {
@@ -1397,6 +1474,8 @@ static int lpass_cdc_remove(struct platform_device *pdev)
 	if (!priv)
 		return -EINVAL;
 
+	privsw_unregister_client(PRIVSW_MIC, &priv->privsw_nb);
+	cancel_delayed_work_sync(&priv->privsw_restore_work);
 	of_platform_depopulate(&pdev->dev);
 	mutex_destroy(&priv->macro_lock);
 	mutex_destroy(&priv->io_lock);
