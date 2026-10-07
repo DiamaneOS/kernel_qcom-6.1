@@ -292,6 +292,7 @@ def define_fps():
         "drivers/input/finger/focal_finger/focaltech_fp.ko",
         "drivers/input/misc/vl53L1/stmvl53l1.ko",
         "drivers/emkit/emkit_info.ko",
+        "drivers/misc/diamaneos_privsw/diamaneos_privsw.ko",
         "drivers/misc/haptic_hv/haptic.ko",
         "drivers/input/hall_kernel/hall_det.ko",
     ]
