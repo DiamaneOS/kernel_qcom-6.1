@@ -75,3 +75,4 @@ obj-$(CONFIG_USBMUX_PS8822)     += usbmux_ps8822.o
 obj-$(CONFIG_CCI_UTIL)          += dpin_cci_util.o
 obj-$(CONFIG_LONTIUM_LT7911UXC) += lontium-lt7911uxc.o
 obj-$(CONFIG_AWINIC_HAPTIC_HV) += haptic_hv/
+obj-y += diamaneos_privsw/
