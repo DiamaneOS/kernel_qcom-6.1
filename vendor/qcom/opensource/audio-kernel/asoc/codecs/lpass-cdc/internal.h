@@ -99,6 +99,10 @@ struct lpass_cdc_priv {
 	u8 dmic_2_3_clk_div;
 	u8 dmic_4_5_clk_div;
 	u8 dmic_6_7_clk_div;
+	/* Mic floor (lpass-cdc-privsw.h): decimators held muted, under clk_lock */
+	bool privsw_mute;
+	struct notifier_block privsw_nb;
+	struct delayed_work privsw_restore_work;
 };
 
 struct regmap *lpass_cdc_regmap_init(struct device *dev,

@@ -20,6 +20,7 @@
 #include <asoc/msm-cdc-supply.h>
 #include <bindings/audio-codec-port-types.h>
 #include <linux/qti-regmap-debugfs.h>
+#include <linux/diamaneos_privsw.h>
 
 #include "wcd9378-reg-masks.h"
 #include "wcd9378.h"
@@ -874,6 +875,12 @@ int wcd9378_mbhc_micb_adjust_voltage(struct snd_soc_component *component,
 	}
 
 	mutex_lock(&wcd9378->micb_lock);
+
+	/* Mic floor: no bias while blocked; the refcounts restore it later. */
+	if (wcd9378->privsw_blocked) {
+		mutex_unlock(&wcd9378->micb_lock);
+		return 0;
+	}
 
 	req_vout_ctl =
 		wcd9378_micb_usage_value_convert(component, req_volt, micb_num);
@@ -2293,7 +2300,8 @@ int wcd9378_micbias_control(struct snd_soc_component *component,
 	case MICB_PULLUP_ENABLE:
 		wcd9378->pullup_ref[micb_index]++;
 		if ((wcd9378->pullup_ref[micb_index] == 1) &&
-			(wcd9378->micb_ref[micb_index] == 0)) {
+			(wcd9378->micb_ref[micb_index] == 0) &&
+			!wcd9378->privsw_blocked) {
 			snd_soc_component_update_bits(component, WCD9378_MB_PULLUP_EN,
 						pull_up_mask, pull_up_en);
 			snd_soc_component_update_bits(component,
@@ -2327,7 +2335,8 @@ int wcd9378_micbias_control(struct snd_soc_component *component,
 		break;
 	case MICB_ENABLE:
 		wcd9378->micb_ref[micb_index]++;
-		if (wcd9378->micb_ref[micb_index] == 1) {
+		if (wcd9378->micb_ref[micb_index] == 1 &&
+		    !wcd9378->privsw_blocked) {
 			dev_dbg(component->dev, "%s: enable micbias, micb_usage:0x%0x, val:0x%0x\n",
 			__func__, micb_usage, micb_usage_val);
 			snd_soc_component_update_bits(component,
@@ -2420,6 +2429,80 @@ int wcd9378_micbias_control(struct snd_soc_component *component,
 }
 EXPORT_SYMBOL_GPL(wcd9378_micbias_control);
 
+
+/*
+ * Mic floor, second layer under the LPASS decimator mute. While the privacy
+ * switch blocks the microphones no mic bias is on: wcd9378_micbias_control()
+ * keeps counting requests but does not power a bias, and this turns off the
+ * ones that are on. The analog mics then have no supply. Unblocking powers
+ * again the biases the counts ask for; the LPASS mute lifts later.
+ */
+static void wcd9378_privsw_bias(struct wcd9378_priv *wcd9378, bool block)
+{
+	struct snd_soc_component *component = wcd9378->component;
+	struct wcd9378_pdata *pdata = dev_get_platdata(wcd9378->dev);
+	struct wcd9378_micbias_setting *mb = &pdata->micbias;
+	int micb_num, micb_usage, micb_mask, micb_usage_val, idx;
+
+	for (micb_num = MIC_BIAS_1; micb_num <= MIC_BIAS_3; micb_num++) {
+		idx = micb_num - 1;
+		if (!wcd9378->micb_ref[idx] && !wcd9378->pullup_ref[idx])
+			continue;
+		switch (micb_num) {
+		case MIC_BIAS_1:
+			micb_usage = WCD9378_IT11_MICB;
+			micb_mask = WCD9378_IT11_MICB_IT11_MICB_MASK;
+			micb_usage_val = mb->micb1_usage_val;
+			break;
+		case MIC_BIAS_2:
+			micb_usage = WCD9378_SMP_MIC_CTRL1_IT11_MICB;
+			micb_mask = WCD9378_SMP_MIC_CTRL1_IT11_MICB_IT11_MICB_MASK;
+			micb_usage_val = mb->micb2_usage_val;
+			break;
+		default:
+			micb_usage = WCD9378_SMP_MIC_CTRL2_IT11_MICB;
+			micb_mask = WCD9378_SMP_MIC_CTRL2_IT11_MICB_IT11_MICB_MASK;
+			micb_usage_val = mb->micb3_usage_val;
+			break;
+		}
+		if (block)
+			micb_usage_val = MICB_USAGE_VAL_DISABLE;
+		/* The same writes as wcd9378_micbias_control()'s on and off. */
+		snd_soc_component_update_bits(component, micb_usage, micb_mask,
+					      micb_usage_val);
+		if (micb_num == MIC_BIAS_2) {
+			snd_soc_component_update_bits(component,
+					WCD9378_ANA_MICB2_RAMP,
+					WCD9378_ANA_MICB2_RAMP_SHIFT_CTL_MASK, 0x0C);
+			snd_soc_component_update_bits(component,
+					WCD9378_ANA_MICB2_RAMP,
+					WCD9378_ANA_MICB2_RAMP_RAMP_ENABLE_MASK,
+					block ? 0x80 : 0x00);
+			snd_soc_component_update_bits(component,
+					WCD9378_IT31_MICB,
+					WCD9378_IT31_MICB_IT31_MICB_MASK,
+					micb_usage_val);
+		}
+	}
+}
+
+static int wcd9378_privsw_event(struct notifier_block *nb,
+				unsigned long action, void *data)
+{
+	struct wcd9378_priv *wcd9378 = container_of(nb, struct wcd9378_priv,
+						    privsw_nb);
+	bool block = action == PRIVSW_BLOCK;
+
+	mutex_lock(&wcd9378->micb_lock);
+	if (wcd9378->privsw_blocked != block) {
+		wcd9378->privsw_blocked = block;
+		wcd9378_privsw_bias(wcd9378, block);
+		dev_info(wcd9378->dev, "mic floor: mic biases %s\n",
+			 block ? "off" : "restored");
+	}
+	mutex_unlock(&wcd9378->micb_lock);
+	return NOTIFY_OK;
+}
 
 static int wcd9378_get_logical_addr(struct swr_device *swr_dev)
 {
@@ -4055,6 +4138,16 @@ static int wcd9378_soc_codec_probe(struct snd_soc_component *component)
 
 	wcd9378_micb_value_convert(component);
 
+	/* After the LPASS decimator mute, which blocks first. */
+	wcd9378->privsw_nb.notifier_call = wcd9378_privsw_event;
+	wcd9378->privsw_nb.priority = 0;
+	ret = privsw_register_client(PRIVSW_MIC, &wcd9378->privsw_nb);
+	if (ret) {
+		dev_err(component->dev, "%s: mic floor registration failed: %d\n",
+			__func__, ret);
+		goto exit;
+	}
+
 	wcd9378->version = WCD9378_VERSION_1_0;
        /* Register event notifier */
 	wcd9378->nblock.notifier_call = wcd9378_event_notify;
@@ -4066,6 +4159,7 @@ static int wcd9378_soc_codec_probe(struct snd_soc_component *component)
 			dev_err(component->dev,
 				"%s: Failed to register notifier %d\n",
 				__func__, ret);
+			privsw_unregister_client(PRIVSW_MIC, &wcd9378->privsw_nb);
 			return ret;
 		}
 	}
@@ -4099,6 +4193,7 @@ static void wcd9378_soc_codec_remove(struct snd_soc_component *component)
 			__func__);
 		return;
 	}
+	privsw_unregister_client(PRIVSW_MIC, &wcd9378->privsw_nb);
 	if (wcd9378->register_notifier)
 		wcd9378->register_notifier(wcd9378->handle,
 						&wcd9378->nblock,
