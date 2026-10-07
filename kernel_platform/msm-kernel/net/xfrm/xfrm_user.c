@@ -951,10 +951,14 @@ static int copy_user_offload(struct xfrm_dev_offload *xso, struct sk_buff *skb)
 	return 0;
 }
 
+/*
+ * Always redact SA secrets in dumps and notifications. Kernel lockdown runs at
+ * integrity level here, which does not cover LOCKDOWN_XFRM_SECRET; nothing on
+ * Android reads keys back from the kernel.
+ */
 static bool xfrm_redact(void)
 {
-	return IS_ENABLED(CONFIG_SECURITY) &&
-		security_locked_down(LOCKDOWN_XFRM_SECRET);
+	return true;
 }
 
 static int copy_to_user_auth(struct xfrm_algo_auth *auth, struct sk_buff *skb)
