@@ -1027,7 +1027,11 @@ static int qcom_slim_ngd_xfer_msg(struct slim_controller *sctrl,
 		mutex_unlock(&ctrl->tx_lock);
 		return -ENOMEM;
 	}
-	mutex_unlock(&ctrl->tx_lock);
+	/*
+	 * Keep tx_lock until the message is posted and sent: pbuf lives in
+	 * the TX DMA buffers, which the SSR/PDR down path frees under
+	 * tx_lock.
+	 */
 
 	if (txn->mt == SLIM_MSG_MT_CORE &&
 		(txn->mc == SLIM_MSG_MC_CONNECT_SOURCE ||
@@ -1045,6 +1049,7 @@ static int qcom_slim_ngd_xfer_msg(struct slim_controller *sctrl,
 			txn->mc = SLIM_USR_MC_DISCONNECT_PORT;
 			break;
 		default:
+			mutex_unlock(&ctrl->tx_lock);
 			return -EINVAL;
 		}
 
@@ -1060,6 +1065,7 @@ static int qcom_slim_ngd_xfer_msg(struct slim_controller *sctrl,
 		ret = slim_alloc_txn_tid(sctrl, txn);
 		if (ret) {
 			SLIM_ERR(ctrl, "%s: Unable to allocate TID\n", __func__);
+			mutex_unlock(&ctrl->tx_lock);
 			return ret;
 		}
 
@@ -1100,12 +1106,6 @@ static int qcom_slim_ngd_xfer_msg(struct slim_controller *sctrl,
 			memcpy(puc, txn->msg->wbuf, txn->msg->num_bytes);
 	}
 
-	if (!mutex_trylock(&ctrl->tx_lock)) {
-		SLIM_ERR(ctrl, "%s: ngd going down due SSR/PDR, skipping tx msg post\n",
-			 __func__);
-		txn->comp = NULL;
-		return -EAGAIN;
-	}
 	ret = qcom_slim_ngd_tx_msg_post(ctrl, pbuf, txn->rl);
 	if (ret) {
 		mutex_unlock(&ctrl->tx_lock);
@@ -1853,7 +1853,14 @@ static int qcom_slim_ngd_ssr_pdr_notify(struct qcom_slim_ngd_ctrl *ctrl,
 			"QCOM_SSR_BEFORE_SHUTDOWN", "slim_ngd_ssr_pdr-enter");
 		SLIM_INFO(ctrl, "SLIM SSR Before Shutdown\n");
 		if (ctrl->state != QCOM_SLIM_NGD_CTRL_DOWN) {
+			/*
+			 * Let a TX in flight finish before the DMA channels and
+			 * buffers go away. qcom_slim_ngd_xfer_msg() only tries
+			 * tx_lock and backs off, so holding it here cannot
+			 * deadlock against callers that hold ctrl->ctrl.lock.
+			 */
 			mutex_lock(&ctrl->suspend_resume_lock);
+			mutex_lock(&ctrl->tx_lock);
 			ctrl->state = QCOM_SLIM_NGD_CTRL_SSR_GOING_DOWN;
 			/*
 			 * Mark capability_timeout to false here to handle
@@ -1869,6 +1876,7 @@ static int qcom_slim_ngd_ssr_pdr_notify(struct qcom_slim_ngd_ctrl *ctrl,
 			qcom_slim_ngd_exit_dma(ctrl);
 			ctrl->state = QCOM_SLIM_NGD_CTRL_DOWN;
 			SLIM_INFO(ctrl, "SLIM SSR down\n");
+			mutex_unlock(&ctrl->tx_lock);
 			mutex_unlock(&ctrl->suspend_resume_lock);
 		}
 
