@@ -2918,8 +2918,14 @@ static bool spi_geni_is_dma_xfer_done(struct spi_geni_master *mas,
 	if (!mas->cur_xfer)
 		return false;
 
+	/*
+	 * TX and RX can finish in separate interrupts. Their DONE bits clear
+	 * tx_rem_bytes and rx_rem_bytes, so those remember which direction
+	 * already finished: complete on the interrupt that brings the other.
+	 */
 	if (mas->cur_xfer->tx_buf && mas->cur_xfer->rx_buf)
-		return (dma_tx_status & TX_DMA_DONE) && (dma_rx_status & RX_DMA_DONE) &&
+		return ((dma_tx_status & TX_DMA_DONE) ||
+			(dma_rx_status & RX_DMA_DONE)) &&
 			!mas->tx_rem_bytes && !mas->rx_rem_bytes;
 
 	if (mas->cur_xfer->tx_buf)
