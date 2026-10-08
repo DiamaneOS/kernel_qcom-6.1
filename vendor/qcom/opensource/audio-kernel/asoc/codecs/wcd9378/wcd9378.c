@@ -4172,6 +4172,10 @@ static int wcd9378_soc_codec_probe(struct snd_soc_component *component)
 				sizeof(struct sdca_regdump_info),
 				GFP_KERNEL);
 
+	/* The register dump is a debugfs aid: the codec works without it. */
+	if (!wcd9378->debugfs_info || !wcd9378->regdump_info)
+		return 0;
+
 	wcd9378->regdump_info->reg_array = wcd9378_reg_array;
 	wcd9378->regdump_info->reg_num = WCD9378_REGISTERS_ARRAY_NUM;
 	wcd9378->regdump_info->component = component;
