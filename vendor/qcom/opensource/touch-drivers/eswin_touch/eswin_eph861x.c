@@ -1065,6 +1065,45 @@ static int eph_gesture_mode_set(struct eph_data *ephdata, u8 gesture_mode)
     return ret_val;
 }
 
+#if defined(CONFIG_DRM)
+static int __eph_dev_enter_lp_mode(struct eph_data *ephdata);
+static int __eph_dev_enter_normal_mode(struct eph_data *ephdata);
+#endif
+
+/*
+ * Applies the gestures asked for through gesture_wakeup (EPH_GESTURE_TYPES
+ * bits), with mode_lock held. With the panel on, the controller only keeps
+ * them for the next low-power entry. With the panel off they apply at once:
+ * the sensors HAL arms the taps when the doze service starts, which is
+ * usually after the panel has gone off. A controller already watching for
+ * gestures gets the new set; with none left it reports nothing until the panel
+ * turns on. A controller in deep sleep is woken into gesture mode the same way
+ * a screen on and screen off would.
+ */
+static void eph_gesture_mode_apply(struct eph_data *ephdata, u8 mode)
+{
+    struct device *dev = &ephdata->commsdevice->dev;
+    bool deep_sleep = ephdata->lp && !ephdata->irq_wake;
+    u8 set_mode = mode;
+
+    if (ephdata->lp && ephdata->irq_wake)
+        set_mode |= BIT(0);
+
+    if (!deep_sleep && eph_gesture_mode_set(ephdata, set_mode))
+        dev_err(dev, "gesture mode %x not written, kept for the next screen off\n", mode);
+
+    ephdata->gesture_mode = set_mode;
+    ephdata->gesture_wakeup_enable = (mode & EPH_GESTURE_TYPES) != 0;
+
+#if defined(CONFIG_DRM)
+    if (deep_sleep && ephdata->gesture_wakeup_enable) {
+        __eph_dev_enter_normal_mode(ephdata);
+        __eph_dev_enter_lp_mode(ephdata);
+        eph_clear_all_host_touch_slots(ephdata);
+    }
+#endif
+}
+
 static ssize_t eph_devattr_update_fw_store(struct device *dev,
                                            struct device_attribute *attr,
                                            const char *buf,
@@ -1314,10 +1353,10 @@ static ssize_t eph_devattr_gesture_wakeup_store(struct device *dev,
                                            size_t count)
 {
     struct eph_data *ephdata;
-    int ret_val = -1;
     int input = 0;
-    u8 gesture_mode = 0;
-    u8 set_mode = 0;
+    u8 gesture_bit;
+    u8 mode;
+    u8 set_mode;
     ephdata = (struct eph_data*)dev_get_drvdata(dev);
 
     if (!ephdata)
@@ -1326,54 +1365,19 @@ static ssize_t eph_devattr_gesture_wakeup_store(struct device *dev,
     if (kstrtoint(buf, 10, &input))
         return -EINVAL;
 
+    /* 1 tap, 2 double tap, 3 swipe; a negative value clears the gesture */
     switch (input) {
     case 1:
-        /* enable tap */
-        if (ephdata->gesture_mode & BIT(1)) {
-            dev_info(&ephdata->commsdevice->dev, "tap already set\n");
-            goto exit;
-        }
-        gesture_mode = BIT(1);
+    case -1:
+        gesture_bit = BIT(1);
         break;
     case 2:
-        /* enable double tap */
-        if (ephdata->gesture_mode & BIT(2)) {
-            dev_info(&ephdata->commsdevice->dev, "double tap already set\n");
-            goto exit;
-        }
-        gesture_mode = BIT(2);
+    case -2:
+        gesture_bit = BIT(2);
         break;
     case 3:
-        /* enable swipe */
-        if (ephdata->gesture_mode & BIT(3)) {
-            dev_info(&ephdata->commsdevice->dev, "swipe already set\n");
-            goto exit;
-        }
-        gesture_mode = BIT(3);
-        break;
-    case -1:
-        /* disable tap */
-        if ((ephdata->gesture_mode & BIT(1)) == 0) {
-            dev_info(&ephdata->commsdevice->dev, "tap not set\n");
-            goto exit;
-        }
-        gesture_mode |= ~BIT(1);
-        break;
-    case -2:
-        /* disable double tap */
-        if ((ephdata->gesture_mode & BIT(2)) == 0) {
-            dev_info(&ephdata->commsdevice->dev, "double tap not set\n");
-            goto exit;
-        }
-        gesture_mode |= ~BIT(2);
-        break;
     case -3:
-        /* disable swipe */
-        if ((ephdata->gesture_mode & BIT(3)) == 0) {
-            dev_info(&ephdata->commsdevice->dev, "swipe not set\n");
-            goto exit;
-        }
-        gesture_mode |= ~BIT(3);
+        gesture_bit = BIT(3);
         break;
     case 0:
     default:
@@ -1381,26 +1385,37 @@ static ssize_t eph_devattr_gesture_wakeup_store(struct device *dev,
         return -EINVAL;
     }
 
-    set_mode = (input > 0) ? (ephdata->gesture_mode | gesture_mode) :
-            (ephdata->gesture_mode & gesture_mode);
+    mutex_lock(&ephdata->mode_lock);
 
-    ret_val = eph_gesture_mode_set(ephdata, set_mode);
+    mode = ephdata->gesture_mode & EPH_GESTURE_TYPES;
+    set_mode = (input > 0) ? (mode | gesture_bit) : (mode & ~gesture_bit);
 
-    if (ret_val) {
-        dev_err(&ephdata->commsdevice->dev, "mode set/clr fail %x", ret_val);
-        goto exit;
+    if (set_mode != mode) {
+        eph_gesture_mode_apply(ephdata, set_mode);
+        dev_info(&ephdata->commsdevice->dev, "gesture mode %x\n", set_mode);
     }
 
-    if (ephdata->gesture_mode & 0xE) {
-        ephdata->gesture_wakeup_enable = true;
-        dev_info(&ephdata->commsdevice->dev, "mode %x enabled\n", ephdata->gesture_mode);
-    } else {
-        ephdata->gesture_wakeup_enable = false;
-        dev_info(&ephdata->commsdevice->dev, "gesture disabled\n");
-    }
+    mutex_unlock(&ephdata->mode_lock);
 
-exit:
     return count;
+}
+
+/*
+ * Returns the wake gestures the controller reported since the last read
+ * (EPH_WAKE_GESTURE_* bits: 1 single tap, 2 double tap), else 0. The sensors
+ * HAL polls it (sysfs_notify) while Tap to wake or Tap to check phone is armed.
+ */
+static ssize_t eph_devattr_wake_gesture_show(struct device *dev,
+                                           struct device_attribute *attr,
+                                           char *buf)
+{
+    struct eph_data *ephdata;
+    ephdata = (struct eph_data*)dev_get_drvdata(dev);
+
+    if (!ephdata)
+        return -EIO;
+
+    return sysfs_emit(buf, "%d\n", atomic_xchg(&ephdata->wake_gesture_pending, 0));
 }
 
 static ssize_t eph_devattr_finger_print_enable(struct device *dev,
@@ -1772,6 +1787,7 @@ static DEVICE_ATTR(read_device_message, S_IRUGO, eph_devattr_comms_read, NULL);
 static DEVICE_ATTR(read_device_report, S_IRUGO, eph_devattr_device_report_read, NULL);
 static DEVICE_ATTR(reset_device, S_IRUGO, eph_devattr_reset_device, NULL);
 static DEVICE_ATTR(gesture_wakeup, (S_IWUSR|S_IRUGO), eph_devattr_gesture_wakeup_read, eph_devattr_gesture_wakeup_store);
+static DEVICE_ATTR(wake_gesture, S_IRUSR, eph_devattr_wake_gesture_show, NULL);
 static DEVICE_ATTR(finger_print_enable, S_IWUSR, NULL, eph_devattr_finger_print_enable);
 static DEVICE_ATTR(charger_mode, (S_IRUGO | S_IWUSR | S_IWGRP),
 	eswin_ts_charger_mode_show, eswin_ts_charger_mode_store);
@@ -1814,6 +1830,7 @@ static struct attribute *eph_attrs[] =
     &dev_attr_reset_device.attr,
 
 	&dev_attr_gesture_wakeup.attr,
+	&dev_attr_wake_gesture.attr,
     /* FOD enable switch */
     &dev_attr_finger_print_enable.attr,
 
@@ -2640,6 +2657,8 @@ static int eph_probe(struct comms_device *commsdevice, const struct comms_device
 
     mutex_init(&ephdata->comms_mutex);
     mutex_init(&ephdata->sysfs_report_buffer_lock);
+    mutex_init(&ephdata->mode_lock);
+    atomic_set(&ephdata->wake_gesture_pending, 0);
 
     device_init_wakeup(&commsdevice->dev, true);
 
@@ -2885,7 +2904,7 @@ static int eph_deep_mode_enable(struct eph_data *ephdata, int enable)
     return ret_val;
 }
 
-static int eph_dev_enter_lp_mode(struct eph_data *ephdata)
+static int __eph_dev_enter_lp_mode(struct eph_data *ephdata)
 {
     int ret_val = 0;
     struct device *dev = &ephdata->commsdevice->dev;
@@ -2916,7 +2935,7 @@ static int eph_dev_enter_lp_mode(struct eph_data *ephdata)
     return ret_val;
 }
 
-static int eph_dev_enter_normal_mode(struct eph_data *ephdata)
+static int __eph_dev_enter_normal_mode(struct eph_data *ephdata)
 {
     int ret_val = 0;
     struct device *dev = &ephdata->commsdevice->dev;
@@ -2925,7 +2944,11 @@ static int eph_dev_enter_normal_mode(struct eph_data *ephdata)
         return 0;
 
     if (ephdata->lp) {
-        if (ephdata->gesture_wakeup_enable) {
+        /*
+         * Leave the mode the controller entered: gesture_wakeup may have
+         * changed the wanted gestures while the panel was off.
+         */
+        if (ephdata->irq_wake) {
             disable_irq_wake(ephdata->chg_irq);
             ephdata->irq_wake = false;
 #if 0
@@ -2987,6 +3010,28 @@ static int eph_dev_enter_normal_mode(struct eph_data *ephdata)
 
     if (ret_val)
         dev_err(dev, "Failed to enter normal mode (%d)\n", ret_val);
+
+    return ret_val;
+}
+
+static int eph_dev_enter_lp_mode(struct eph_data *ephdata)
+{
+    int ret_val;
+
+    mutex_lock(&ephdata->mode_lock);
+    ret_val = __eph_dev_enter_lp_mode(ephdata);
+    mutex_unlock(&ephdata->mode_lock);
+
+    return ret_val;
+}
+
+static int eph_dev_enter_normal_mode(struct eph_data *ephdata)
+{
+    int ret_val;
+
+    mutex_lock(&ephdata->mode_lock);
+    ret_val = __eph_dev_enter_normal_mode(ephdata);
+    mutex_unlock(&ephdata->mode_lock);
 
     return ret_val;
 }
