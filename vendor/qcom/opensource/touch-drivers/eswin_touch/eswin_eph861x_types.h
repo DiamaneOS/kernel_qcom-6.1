@@ -2,6 +2,7 @@
 #define __LINUX_PLATFORM_DATA_ESWIN_EPH_TYPES_H
 
 #include <linux/types.h>
+#include <linux/atomic.h>
 
 #include <uapi/asm-generic/errno-base.h>
 #include <linux/sysfs.h>
@@ -61,6 +62,12 @@
 #define EPH_POWERON_DELAY    100  /* msec */
 #define EPH_RESET_HOLD_TIME  2  /* msec */
 
+/* gesture_mode bits of the gestures: tap, double tap, swipe (BIT0 is on/off) */
+#define EPH_GESTURE_TYPES    (BIT(1) | BIT(2) | BIT(3))
+
+/* wake_gesture bits: a single tap, a double tap */
+#define EPH_WAKE_GESTURE_TAP        1
+#define EPH_WAKE_GESTURE_DOUBLE_TAP 2
 
 #if ESWIN_EPH861X_SPI
 /* Alias communication adapter to relevant adaptor */
@@ -240,6 +247,11 @@ struct eph_data
     /* low power mode gesture */
     u8 lp;
     bool irq_wake;
+
+    /* Serialises low-power entry and exit with gesture_wakeup writes */
+    struct mutex mode_lock;
+    /* EPH_WAKE_GESTURE_* bits the controller reported that wake_gesture has not returned yet */
+    atomic_t wake_gesture_pending;
 
     struct backlight_device *bl;
     unsigned int last_brightness;
