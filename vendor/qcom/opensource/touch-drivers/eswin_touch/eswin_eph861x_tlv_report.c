@@ -28,6 +28,7 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/input/mt.h>
+#include <linux/pm_wakeup.h>
 
 #include "eswin_eph861x_project_config.h"
 #include "eswin_eph861x_tlv.h"
@@ -80,31 +81,43 @@ const char *get_touch_type_str(u8 touch_type)
  * 6    |          Size Low        |    x
  * 7    |          Size High       |    x
  */
+
+/* How long a wake gesture keeps the system awake for the sensors HAL to read it */
+#define EPH_WAKE_GESTURE_WAKE_MS 500
+
+/*
+ * Taps are not wake keys: pockets and bags produce them too. They go to the
+ * sensors HAL through wake_gesture, and SystemUI wakes the screen after a
+ * proximity check (Tap to wake, Tap to check phone). gesture_bit is the
+ * gesture_mode bit that enables the gesture, report_bit its wake_gesture bit.
+ */
+static void eph_wake_gesture_event_process(struct eph_data *ephdata, u8 gesture_bit,
+                                           int report_bit)
+{
+    struct device *dev = &ephdata->commsdevice->dev;
+
+    if (!(ephdata->gesture_mode & gesture_bit))
+        return;
+
+    pm_wakeup_event(dev, EPH_WAKE_GESTURE_WAKE_MS);
+    atomic_or(report_bit, &ephdata->wake_gesture_pending);
+    sysfs_notify(&dev->kobj, NULL, "wake_gesture");
+}
+
 static void eph_gesture_event_process(struct eph_data *ephdata, u8 *message)
 {
     struct device *dev = &ephdata->commsdevice->dev;
-    struct input_dev *input_dev = ephdata->inputdev;
 
     u8 gesture_type = message[1];
 
     printk("eswin gesture report type %d\n", gesture_type);
     switch (gesture_type) {
     case GESTURE_TAP:
-    {
-        input_report_key(input_dev, KEY_WAKEUP, 1);
-        input_sync(input_dev);
-        input_report_key(input_dev, KEY_WAKEUP, 0);
-        input_sync(input_dev);
+        eph_wake_gesture_event_process(ephdata, BIT(1), EPH_WAKE_GESTURE_TAP);
         break;
-    }
     case GESTURE_DOUBLE_TAP:
-    {
-        input_report_key(input_dev, KEY_WAKEUP, 1);
-        input_sync(input_dev);
-        input_report_key(input_dev, KEY_WAKEUP, 0);
-        input_sync(input_dev);
+        eph_wake_gesture_event_process(ephdata, BIT(2), EPH_WAKE_GESTURE_DOUBLE_TAP);
         break;
-    }
     case GESTURE_SWIPE_LEFT:
         /* TODO: Implement according to requirement */
         break;
