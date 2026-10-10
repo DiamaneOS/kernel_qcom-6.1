@@ -18,11 +18,12 @@ unchanged:
 - `prebuilts.json`: the toolchains (Clang, build tools, Bazel, JDK and others).
   They are fetched, not committed.
 
-## History
+## Branches
 
-Each upstream project was imported once, in a commit naming its source and
-commit; Fairphone's FP6 changes are part of those imports. DiamaneOS changes
-are separate commits on top. The `upstream` branch holds only the imports.
+- `upstream`: only the imported upstream projects.
+  - Each import is one commit that names its source and commit.
+  - Fairphone's FP6 changes are part of the imports.
+- `android17`: `upstream` plus the DiamaneOS changes, as separate commits.
 
 ## Get the sources
 
@@ -42,10 +43,10 @@ Published builds:
 
 ## Updating from upstream
 
-On `upstream`, replace one project's folder with the new upstream state in a
-single commit naming the source commit, then merge `upstream` into
-`android17`. Git keeps our changes and reports a conflict only where upstream
-changed the same lines.
+- On `upstream`, replace one project's folder with the new upstream state, in a
+  single commit that names the source commit.
+- Merge `upstream` into `android17`. Git keeps our changes and reports a
+  conflict only where upstream changed the same lines.
 
 ## Licence
 
