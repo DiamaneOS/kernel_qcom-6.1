@@ -2236,11 +2236,20 @@ static int aw882xx_interrupt_init(struct aw882xx *aw882xx)
 	return 0;
 }
 
+/*
+ * The reg, rw and awrw attributes write raw amplifier registers. That is a
+ * tuning interface: nothing on the phone uses it, so writes are refused.
+ */
+#define AW882XX_RAW_REG_WRITES 0
+
 static ssize_t reg_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct aw882xx *aw882xx = dev_get_drvdata(dev);
 	unsigned int databuf[2] = {0};
+
+	if (!AW882XX_RAW_REG_WRITES)
+		return -EPERM;
 
 	if (sscanf(buf, "%x %x", &databuf[0], &databuf[1]) == 2)
 		aw882xx_i2c_write(aw882xx->i2c, databuf[0], databuf[1]);
@@ -2272,6 +2281,9 @@ static ssize_t rw_store(struct device *dev,
 	struct aw882xx *aw882xx = dev_get_drvdata(dev);
 
 	unsigned int databuf[2] = {0};
+
+	if (!AW882XX_RAW_REG_WRITES)
+		return -EPERM;
 
 	if (sscanf(buf, "%x %x", &databuf[0], &databuf[1]) == 2) {
 		aw882xx->rw_reg_addr = (unsigned char)databuf[0];
@@ -2418,6 +2430,9 @@ static ssize_t awrw_store(struct device *dev,
 {
 	int ret;
 	struct aw882xx *aw882xx = dev_get_drvdata(dev);
+
+	if (!AW882XX_RAW_REG_WRITES)
+		return -EPERM;
 
 	if (count < AWRW_HDR_LEN) {
 		aw_dev_err(dev, "data count too smaller, please check write format");
