@@ -13,7 +13,7 @@ unchanged:
   and host tools.
 - `kernel_platform/common`: submodule,
   [DiamaneOS/kernel_common-6.1](https://github.com/DiamaneOS/kernel_common-6.1),
-  GrapheneOS's common kernel with our changes.
+  GrapheneOS's common kernel with DiamaneOS's changes.
 - `vendor/`: Qualcomm, NXP, ST and Samsung driver modules and device trees.
 - `prebuilts.json`: the toolchains (Clang, build tools, Bazel, JDK and others).
   They are fetched, not committed.
@@ -45,7 +45,7 @@ Published builds:
 
 - On `upstream`, replace one project's folder with the new upstream state, in a
   single commit that names the source commit.
-- Merge `upstream` into `android17`. Git keeps our changes and reports a
+- Merge `upstream` into `android17`. Git keeps DiamaneOS's changes and reports a
   conflict only where upstream changed the same lines.
 
 ## Licence
