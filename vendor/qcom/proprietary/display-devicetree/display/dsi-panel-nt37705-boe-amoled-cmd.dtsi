@@ -250,6 +250,8 @@
 					// 16pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 0F
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0A
 				];
 
 				t2m,mdss-dsi-dbv-higher-bl1290-mode-command = [
@@ -261,6 +263,8 @@
 					// 4pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 03
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0B
 				];
 
 				t2m,mdss-dsi-set-120hz-mode-command = [
@@ -588,6 +592,8 @@
 					// 16pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 0F
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0A
 				];
 
 				t2m,mdss-dsi-dbv-higher-bl1290-mode-command = [
@@ -599,6 +605,8 @@
 					// 4pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 03
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0B
 				];
 
 				t2m,mdss-dsi-set-60hz-mode-command = [
@@ -914,6 +922,8 @@
 					// 16pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 0F
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0A
 				];
 
 				t2m,mdss-dsi-dbv-higher-bl1290-mode-command = [
@@ -925,6 +935,8 @@
 					// 4pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 03
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0B
 				];
 
 				t2m,mdss-dsi-set-90hz-mode-command = [
@@ -1240,6 +1252,8 @@
 					// 16pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 0F
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0A
 				];
 
 				t2m,mdss-dsi-dbv-higher-bl1290-mode-command = [
@@ -1252,6 +1266,8 @@
 					// 4pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 03
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0B
 				];
 
 				t2m,mdss-dsi-set-30hz-mode-command = [
@@ -1569,6 +1585,8 @@
 					// 16pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 0F
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0A
 				];
 
 				t2m,mdss-dsi-dbv-higher-bl1290-mode-command = [
@@ -1580,6 +1598,8 @@
 					// 4pulse
 					39 00 00 40 00 00 02 6F 12
 					39 00 00 40 00 00 02 B2 03
+					// switch-point brightness
+					39 00 00 40 00 00 03 51 05 0B
 				];
 
 				t2m,mdss-dsi-set-10hz-mode-command = [
