@@ -299,6 +299,8 @@ struct battery_chg_dev {
 	u32				restrict_fcc_ua;
 	u32				last_fcc_ua;
 	u32				usb_icl_ua[NUM_USB_PORTS];
+	/* Last input suspend written, sent again after a firmware restart */
+	int				suspend_input;
 	u32				thermal_fcc_step;
 	u32				connector_type;
 	u32				usb_prev_mode;
@@ -1783,6 +1785,18 @@ static void battery_chg_subsys_up_work(struct work_struct *work)
 			pr_err("Failed to set USB-2 ICL(%u uA), rc=%d\n",
 				bcdev->usb_icl_ua[USB_2_PORT_ID], rc);
 	}
+
+	/*
+	 * A restarted firmware draws from USB again. The USB-C port setting
+	 * Off must not end with it, so suspend the input again.
+	 */
+	if (bcdev->suspend_input) {
+		pst = &bcdev->psy_list[PSY_TYPE_USB];
+		rc = write_property_id(bcdev, pst, USB_SUSPEND_INPUT_CURRENT,
+				bcdev->suspend_input);
+		if (rc < 0)
+			pr_err("Failed to suspend the input again, rc=%d\n", rc);
+	}
 }
 
 static int wireless_fw_send_firmware(struct battery_chg_dev *bcdev,
@@ -2192,6 +2206,7 @@ static ssize_t suspend_input_current_store(struct class *c, struct class_attribu
 	rc = write_property_id(bcdev, pst, USB_SUSPEND_INPUT_CURRENT, val);
 	if (rc < 0)
 		return rc;
+	bcdev->suspend_input = val;
 	return count;
 }
 
