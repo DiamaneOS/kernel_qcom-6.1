@@ -4654,6 +4654,12 @@ error:
 #define DATA_PATH_OFF	0
 #define DATA_PATH_ON	1
 
+/* Lets user builds start with data off until the system enables it. */
+static bool disable_usb_data_by_default;
+module_param(disable_usb_data_by_default, bool, 0444);
+MODULE_PARM_DESC(disable_usb_data_by_default,
+		 "USB data and alt modes off until data_path_enable is written");
+
 /* True when the port setting refuses the session the inputs ask for */
 static bool dwc3_msm_data_refused(struct dwc3_msm *mdwc)
 {
@@ -6826,8 +6832,13 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mutex_init(&mdwc->suspend_resume_mutex);
 	mutex_init(&mdwc->role_switch_mutex);
 
+	/* Before the role switch exists, so its first event is checked */
 	mutex_init(&mdwc->data_path_mutex);
-	mdwc->data_path = DATA_PATH_ON;
+	mdwc->data_path = disable_usb_data_by_default ? DATA_PATH_OFF :
+		DATA_PATH_ON;
+	altmode_set_ignore_alt_modes(mdwc->data_path != DATA_PATH_ON);
+	if (disable_usb_data_by_default)
+		dev_info(dev, "USB data off until data_path_enable is written\n");
 
 	if (of_property_read_bool(node, "usb-role-switch")) {
 		struct usb_role_switch_desc role_desc = {
