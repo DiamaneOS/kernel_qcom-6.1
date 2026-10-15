@@ -4763,7 +4763,8 @@ static void dwc3_ext_event_notify(struct dwc3_msm *mdwc)
 
 	/* A session the port setting refuses looks like no cable */
 	if (dwc3_msm_data_refused(mdwc)) {
-		dbg_log_string("USB data refused\n");
+		dev_info(mdwc->dev, "USB %s session refused\n",
+			 test_bit(ID, &mdwc->inputs) ? "device" : "host");
 		set_bit(ID, &mdwc->inputs);
 		clear_bit(B_SESS_VLD, &mdwc->inputs);
 	}
@@ -7581,6 +7582,7 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 	unsigned long flags;
 	int timeout = 100;
+	bool bound;
 	int ret;
 
 	ret = pm_runtime_resume_and_get(mdwc->dev);
@@ -7644,6 +7646,23 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 
 		usb_role_switch_set_role(mdwc->dwc3_drd_sw, USB_ROLE_DEVICE);
 		clk_set_rate(mdwc->core_clk, mdwc->core_clk_rate);
+
+		/*
+		 * The end of a host session adds the gadget again and its
+		 * driver binds by itself. While deny_new_usb is set that bind
+		 * fails and nothing retries it, so retry it here. Unbound,
+		 * adbd reopens its endpoints every second and a bind in that
+		 * short gap fails, so a second try follows.
+		 */
+		if (dwc->gadget && !dwc->gadget->udc->driver) {
+			bound = device_attach(&dwc->gadget->dev) > 0;
+			if (!bound) {
+				msleep(100);
+				bound = device_attach(&dwc->gadget->dev) > 0;
+			}
+			dev_info(mdwc->dev, "USB gadget driver %s\n",
+				 bound ? "bound again" : "still unbound");
+		}
 
 		/*
 		 * Check udc->driver to find out if we are bound to udc or not.
@@ -7804,7 +7823,8 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 		if ((!test_bit(ID, &mdwc->inputs) ||
 				test_bit(B_SESS_VLD, &mdwc->inputs)) &&
 				READ_ONCE(mdwc->data_path) != DATA_PATH_ON) {
-			dbg_event(0xFF, "Data refused", 0);
+			dev_info(mdwc->dev, "USB %s session refused\n",
+				 test_bit(ID, &mdwc->inputs) ? "device" : "host");
 			pm_request_idle(mdwc->dev);
 			break;
 		}
@@ -7819,6 +7839,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				mdwc->drd_state = DRD_STATE_IDLE;
 				goto ret;
 			}
+			dev_info(mdwc->dev, "USB host session started\n");
 		} else if (test_bit(B_SESS_VLD, &mdwc->inputs)) {
 			dev_dbg(mdwc->dev, "b_sess_vld\n");
 			/*
@@ -7836,6 +7857,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			dbg_event(0xFF, "BIDLE gsync",
 				atomic_read(&mdwc->dev->power.usage_count));
 			dwc3_otg_start_peripheral(mdwc, 1);
+			dev_info(mdwc->dev, "USB device session started\n");
 			mdwc->drd_state = DRD_STATE_PERIPHERAL;
 			work = true;
 		}
