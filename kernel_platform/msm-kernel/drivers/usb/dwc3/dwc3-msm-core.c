@@ -48,6 +48,7 @@
 #include <linux/usb/redriver.h>
 #include <linux/usb/composite.h>
 #include <linux/soc/qcom/wcd939x-i2c.h>
+#include <linux/soc/qcom/altmode-glink.h>
 #include <linux/usb/repeater.h>
 
 #include "core.h"
@@ -652,6 +653,9 @@ struct dwc3_msm {
 
 	bool			wcd_usbss;
 	bool			dynamic_disable;
+	/* USB-C port control, the DATA_PATH_* value of data_path_enable */
+	int			data_path;
+	struct mutex		data_path_mutex;
 	bool			read_u1u2;
 
 	struct dentry		*dbg_dir;
@@ -4638,6 +4642,39 @@ error:
 	return ret;
 }
 
+/*
+ * USB-C port control, as GrapheneOS's data_path_enable on Pixels. Values
+ * written to data_path_enable:
+ *  1: USB data allowed, started now if a cable is in.
+ *  0: USB data stopped now and refused on later connections.
+ * -1: the current connection stays, later ones are refused.
+ * Alt modes are ignored unless it is 1. Charging is not affected.
+ */
+#define DATA_PATH_KEEP	-1
+#define DATA_PATH_OFF	0
+#define DATA_PATH_ON	1
+
+/* True when the port setting refuses the session the inputs ask for */
+static bool dwc3_msm_data_refused(struct dwc3_msm *mdwc)
+{
+	bool host = !test_bit(ID, &mdwc->inputs);
+	bool device = test_bit(B_SESS_VLD, &mdwc->inputs);
+
+	switch (READ_ONCE(mdwc->data_path)) {
+	case DATA_PATH_ON:
+		return false;
+	case DATA_PATH_KEEP:
+		if (host)
+			return mdwc->drd_state != DRD_STATE_HOST;
+		if (device)
+			return mdwc->drd_state != DRD_STATE_PERIPHERAL &&
+				mdwc->drd_state != DRD_STATE_PERIPHERAL_SUSPEND;
+		return false;
+	default:
+		return host || device;
+	}
+}
+
 /**
  * dwc3_ext_event_notify - callback to handle events from external transceiver
  *
@@ -4716,6 +4753,13 @@ static void dwc3_ext_event_notify(struct dwc3_msm *mdwc)
 		usb_phy_set_suspend(mdwc->hs_phy, 1);
 		mdwc->hs_phy->flags &= ~PHY_SUS_OVERRIDE;
 		return;
+	}
+
+	/* A session the port setting refuses looks like no cable */
+	if (dwc3_msm_data_refused(mdwc)) {
+		dbg_log_string("USB data refused\n");
+		set_bit(ID, &mdwc->inputs);
+		clear_bit(B_SESS_VLD, &mdwc->inputs);
 	}
 
 	dbg_log_string("exit: mdwc->inputs:%lx\n", mdwc->inputs);
@@ -5649,6 +5693,49 @@ static ssize_t dynamic_disable_store(struct device *dev, struct device_attribute
 }
 static DEVICE_ATTR_WO(dynamic_disable);
 
+static ssize_t data_path_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%d\n", READ_ONCE(mdwc->data_path));
+}
+
+static ssize_t data_path_enable_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	int val, i;
+
+	if (kstrtoint(buf, 10, &val) || val < DATA_PATH_KEEP ||
+			val > DATA_PATH_ON)
+		return -EINVAL;
+
+	mutex_lock(&mdwc->data_path_mutex);
+	WRITE_ONCE(mdwc->data_path, val);
+	altmode_set_ignore_alt_modes(val != DATA_PATH_ON);
+	dev_info(dev, "USB data path %d\n", val);
+
+	/*
+	 * -1 leaves the current session alone. Before the first event there
+	 * is no session to stop.
+	 */
+	if (val == DATA_PATH_KEEP || (val == DATA_PATH_OFF &&
+			mdwc->drd_state == DRD_STATE_UNDEFINED))
+		goto out;
+
+	dwc3_ext_event_notify(mdwc);
+	flush_work(&mdwc->sm_work);
+	/* Bounded, so a controller that stays awake cannot hold init */
+	for (i = 0; i < 100 && test_bit(WAIT_FOR_LPM, &mdwc->inputs); i++)
+		msleep(20);
+	flush_work(&mdwc->sm_work);
+out:
+	mutex_unlock(&mdwc->data_path_mutex);
+	return count;
+}
+static DEVICE_ATTR_RW(data_path_enable);
+
 static struct attribute *dwc3_msm_attrs[] = {
 	&dev_attr_orientation.attr,
 	&dev_attr_mode.attr,
@@ -5657,6 +5744,7 @@ static struct attribute *dwc3_msm_attrs[] = {
 	&dev_attr_enable_l1_suspend.attr,
 	&dev_attr_xhci_test.attr,
 	&dev_attr_dynamic_disable.attr,
+	&dev_attr_data_path_enable.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(dwc3_msm);
@@ -6738,6 +6826,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mutex_init(&mdwc->suspend_resume_mutex);
 	mutex_init(&mdwc->role_switch_mutex);
 
+	mutex_init(&mdwc->data_path_mutex);
+	mdwc->data_path = DATA_PATH_ON;
+
 	if (of_property_read_bool(node, "usb-role-switch")) {
 		struct usb_role_switch_desc role_desc = {
 			.set = dwc3_msm_usb_role_switch_set_role,
@@ -7692,6 +7783,18 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 		if (test_bit(WAIT_FOR_LPM, &mdwc->inputs)) {
 			dev_dbg(mdwc->dev, "still not in lpm, wait.\n");
 			dbg_event(0xFF, "WAIT_FOR_LPM", 0);
+			break;
+		}
+
+		/*
+		 * Every session starts here, so the port setting is checked
+		 * again in case it changed after the inputs were set.
+		 */
+		if ((!test_bit(ID, &mdwc->inputs) ||
+				test_bit(B_SESS_VLD, &mdwc->inputs)) &&
+				READ_ONCE(mdwc->data_path) != DATA_PATH_ON) {
+			dbg_event(0xFF, "Data refused", 0);
+			pm_request_idle(mdwc->dev);
 			break;
 		}
 
