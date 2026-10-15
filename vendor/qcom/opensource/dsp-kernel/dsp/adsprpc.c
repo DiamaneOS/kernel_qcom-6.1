@@ -2092,6 +2092,14 @@ static void context_free(struct smq_invoke_ctx *ctx)
 	}
 	spin_unlock(&ctx->fl->hlock);
 
+	/* A finished async job nobody collected is still on the async queue */
+	spin_lock_irqsave(&ctx->fl->aqlock, irq_flags);
+	if (!hlist_unhashed(&ctx->asyncn) && !hlist_fake(&ctx->asyncn)) {
+		hlist_del_init(&ctx->asyncn);
+		atomic_sub(1, &ctx->fl->async_queue_job_count);
+	}
+	spin_unlock_irqrestore(&ctx->fl->aqlock, irq_flags);
+
 	mutex_lock(&ctx->fl->map_mutex);
 	for (i = 0; i < nbufs; ++i) {
 		/*
