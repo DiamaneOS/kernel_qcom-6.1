@@ -14,6 +14,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/soc/qcom/altmode-glink.h>
 #include <linux/soc/qcom/pmic_glink.h>
 #include <linux/usb/typec.h>
 #include <linux/usb/ucsi_glink.h>
@@ -318,6 +319,19 @@ static int ucsi_qti_glink_write(struct ucsi_dev *udev, unsigned int offset,
 
 	if (!validate_ucsi_msg(offset, val_len))
 		return -EINVAL;
+
+	/* USB-C port control: no alt mode entry while alt modes are ignored */
+	if (offset == UCSI_CONTROL && val_len == sizeof(u64) &&
+			altmode_alt_modes_ignored()) {
+		u64 cmd;
+
+		memcpy(&cmd, val, sizeof(cmd));
+		if (UCSI_COMMAND(cmd) == UCSI_SET_NEW_CAM &&
+				UCSI_SET_NEW_CAM_ENTER(cmd)) {
+			pr_info("alt mode entry refused, alt modes are off\n");
+			return -EPERM;
+		}
+	}
 
 	ucsi_log(sync ? "sync_write:" : "async_write:", offset,
 			(u8 *)val, val_len);
