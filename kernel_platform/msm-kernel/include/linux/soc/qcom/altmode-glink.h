@@ -47,6 +47,8 @@ struct altmode_client *altmode_register_client(struct device *dev,
 		const struct altmode_client_data *client_data);
 int altmode_deregister_client(struct altmode_client *client);
 int altmode_send_data(struct altmode_client *client, void *data, size_t len);
+void altmode_set_ignore_alt_modes(bool ignore);
+bool altmode_alt_modes_ignored(void);
 
 #else
 
@@ -77,6 +79,15 @@ static inline int altmode_send_data(struct altmode_client *client, void *data,
 				    size_t len)
 {
 	return -ENODEV;
+}
+
+static inline void altmode_set_ignore_alt_modes(bool ignore)
+{
+}
+
+static inline bool altmode_alt_modes_ignored(void)
+{
+	return false;
 }
 
 #endif
