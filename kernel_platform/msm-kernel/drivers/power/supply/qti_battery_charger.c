@@ -301,6 +301,8 @@ struct battery_chg_dev {
 	u32				usb_icl_ua[NUM_USB_PORTS];
 	/* Last input suspend written, sent again after a firmware restart */
 	int				suspend_input;
+	/* Last charging pause written, sent again after a firmware restart */
+	u32				charge_disable;
 	u32				thermal_fcc_step;
 	u32				connector_type;
 	u32				usb_prev_mode;
@@ -1797,6 +1799,15 @@ static void battery_chg_subsys_up_work(struct work_struct *work)
 		if (rc < 0)
 			pr_err("Failed to suspend the input again, rc=%d\n", rc);
 	}
+
+	/* The charge limit's pause must also survive a firmware restart */
+	if (bcdev->charge_disable) {
+		pst = &bcdev->psy_list[PSY_TYPE_BATTERY];
+		rc = write_property_id(bcdev, pst, BATT_CHG_DISABLE_CHARGING,
+				bcdev->charge_disable);
+		if (rc < 0)
+			pr_err("Failed to pause charging again, rc=%d\n", rc);
+	}
 }
 
 static int wireless_fw_send_firmware(struct battery_chg_dev *bcdev,
@@ -2369,6 +2380,7 @@ static ssize_t charge_disable_store(struct class *c, struct class_attribute *att
 	rc = write_property_id(bcdev, pst, BATT_CHG_DISABLE_CHARGING, chg_dis);
 	if (rc < 0)
 		return rc;
+	bcdev->charge_disable = chg_dis;
 
 
 	return count;
