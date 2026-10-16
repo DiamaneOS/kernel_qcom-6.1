@@ -51,6 +51,7 @@ config UCSI_ACPI
 config UCSI_QTI_GLINK
 	tristate "UCSI Interface Driver for QTI PMIC"
 	depends on QTI_PMIC_GLINK
+	depends on QTI_ALTMODE_GLINK || !QTI_ALTMODE_GLINK
 	help
 	  This driver enables UCSI support on Qualcomm Technologies, Inc.
 	  platforms that expose UCSI interface to communicate with PPM which is

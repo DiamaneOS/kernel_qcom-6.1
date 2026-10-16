@@ -172,6 +172,7 @@ config USB_DWC3_AM62
 config USB_DWC3_MSM
 	tristate "QTI MSM Platforms"
 	depends on ARCH_QCOM || COMPILE_TEST
+	depends on QTI_ALTMODE_GLINK || !QTI_ALTMODE_GLINK
 	help
 	  Applicable to QTI MSM Platforms with DesignWare Core
 	  USB3 IP.

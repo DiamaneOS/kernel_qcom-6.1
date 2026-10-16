@@ -137,6 +137,25 @@ static DEFINE_MUTEX(notify_lock);
 static void altmode_send_pan_ack(struct work_struct *work);
 static void *altmode_ipc_log;
 
+/*
+ * USB-C port control: while set, alt mode notifications are acked as for a
+ * port without a client and reach no client, so no DisplayPort or other alt
+ * mode is set up. The USB controller driver sets it from data_path_enable.
+ */
+static bool ignore_alt_modes;
+
+void altmode_set_ignore_alt_modes(bool ignore)
+{
+	WRITE_ONCE(ignore_alt_modes, ignore);
+}
+EXPORT_SYMBOL(altmode_set_ignore_alt_modes);
+
+bool altmode_alt_modes_ignored(void)
+{
+	return READ_ONCE(ignore_alt_modes);
+}
+EXPORT_SYMBOL(altmode_alt_modes_ignored);
+
 static struct altmode_dev *to_altmode_device(struct device_node *amdev_node)
 {
 	struct platform_device *altmode_pdev;
@@ -583,6 +602,12 @@ static int altmode_callback(void *priv, void *data, size_t len)
 		amclient = idr_find(&amdev->client_idr, IDR_KEY_GEN(svid,
 					port_index));
 		mutex_unlock(&amdev->client_lock);
+
+		if (amclient && READ_ONCE(ignore_alt_modes)) {
+			altmode_dbg("Alt modes ignored, SVID %#x port %u\n",
+					svid, port_index);
+			amclient = NULL;
+		}
 
 		if (!amclient) {
 			altmode_dbg("No client associated with SVID %#x port %u\n",
