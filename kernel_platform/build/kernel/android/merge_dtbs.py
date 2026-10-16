@@ -350,7 +350,10 @@ class InnerMergedDeviceTree(DeviceTreeInfo):
 	def get_name(self):
 		ext = os.path.splitext(os.path.basename(self.base))[1]
 		base_parts = self.filename_to_parts(self.base)
-		name_hash = hex(hash((self.plat_id, self.board_id, self.pmic_id, self.oem_id)))
+		# hash() changes between runs (that of None is an address), a digest does not.
+		ids = [sorted(i) if isinstance(i, (set, frozenset)) else i for i in
+			(self.plat_id, self.board_id, self.pmic_id, self.oem_id)]
+		name_hash = '0x' + hashlib.sha1(repr(ids).encode()).hexdigest()[:16]
 		name = '-'.join(chain.from_iterable([base_parts] + [self.filename_to_parts(tp.filename, ignored_parts=base_parts) for tp in self.techpacks]))
 		final_name = '-'.join([name, name_hash]) + ext
 		return final_name
@@ -416,8 +419,10 @@ class MergedDeviceTree(object):
 
 def parse_dt_files(dt_folder):
 	devicetrees = []
+	# Name order, not the file system's: the order sets the merged names and overlay order.
 	for root, dirs, files in os.walk(dt_folder):
-		for filename in files:
+		dirs.sort()
+		for filename in sorted(files):
 			if os.path.splitext(filename)[1] not in ['.dtb', '.dtbo']:
 				continue
 			filepath = os.path.join(root, filename)
