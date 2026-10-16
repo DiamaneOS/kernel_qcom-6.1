@@ -37,7 +37,8 @@ cd kernel_qcom-6.1
 
 `diamaneos kernel build` from
 [diamaneos-tools](https://github.com/DiamaneOS/diamaneos-tools) builds the
-kernel, modules and device trees and packages them; see its `docs/FP6-KERNEL.md`.
+kernel, modules and device trees and packages them, as its `docs/FP6-KERNEL.md`
+describes.
 Published builds:
 [device_fairphone_FP6-kernels](https://github.com/DiamaneOS/device_fairphone_FP6-kernels).
 
@@ -45,10 +46,10 @@ Published builds:
 
 - On `upstream`, replace one project's folder with the new upstream state, in a
   single commit that names the source commit.
-- Merge `upstream` into `android17`. Git keeps DiamaneOS's changes and reports a
-  conflict only where upstream changed the same lines.
+- Rebase `android17` onto `upstream`. Git replays DiamaneOS's changes and stops
+  only where upstream changed the same lines.
 
 ## Licence
 
 Each project keeps its own licence files. The kernel and most modules are
-GPL-2.0; see the files in each folder.
+GPL-2.0, as the files in each folder state.
