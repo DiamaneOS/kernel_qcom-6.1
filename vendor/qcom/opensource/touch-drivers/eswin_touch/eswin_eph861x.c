@@ -1076,7 +1076,7 @@ static int __eph_dev_enter_normal_mode(struct eph_data *ephdata);
  * them for the next low-power entry. With the panel off they apply at once:
  * the sensors HAL arms the taps when the doze service starts, which is
  * usually after the panel has gone off. A controller already watching for
- * gestures gets the new set; with none left it reports nothing until the panel
+ * gestures gets the new set. With none left it reports nothing until the panel
  * turns on. A controller in deep sleep is woken into gesture mode the same way
  * a screen on and screen off would.
  */
@@ -1365,7 +1365,7 @@ static ssize_t eph_devattr_gesture_wakeup_store(struct device *dev,
     if (kstrtoint(buf, 10, &input))
         return -EINVAL;
 
-    /* 1 tap, 2 double tap, 3 swipe; a negative value clears the gesture */
+    /* 1 tap, 2 double tap, 3 swipe. A negative value clears the gesture. */
     switch (input) {
     case 1:
     case -1:

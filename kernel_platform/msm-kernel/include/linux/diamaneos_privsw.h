@@ -36,7 +36,7 @@ enum privsw_sensor {
 int privsw_register_client(enum privsw_sensor sensor, struct notifier_block *nb);
 void privsw_unregister_client(enum privsw_sensor sensor, struct notifier_block *nb);
 
-/* Whether @sensor is blocked now. Lock-free; fails closed. */
+/* Whether @sensor is blocked now. Lock-free, fails closed. */
 bool privsw_blocked(enum privsw_sensor sensor);
 
 #endif /* _LINUX_DIAMANEOS_PRIVSW_H */

@@ -517,7 +517,7 @@ static int ctrl_cmd_del_client(struct sockaddr_qrtr *from,
 
 	xa_for_each(&local_node->servers, index, srv) {
 #if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
-		/* Local clients cannot reach the DCM role; only relay remote ones. */
+		/* Local clients cannot reach the DCM role. Only relay remote ones. */
 		if (node_id == qrtr_ns.local_node && srv->port == QRTR_IMSDCM_PORT)
 			continue;
 #endif
@@ -565,7 +565,7 @@ static int ctrl_cmd_new_server(struct sockaddr_qrtr *from,
 		    !qrtr_imsdcm_port_owned(port))
 			return -EPERM;
 	} else if (service == QRTR_IMSDCM_SERVICE_ID) {
-		/* Only the AP publishes DCM; a remote record would shadow it. */
+		/* Only the AP publishes DCM. A remote record would shadow it. */
 		return -EPERM;
 	}
 #endif
@@ -621,7 +621,7 @@ static int ctrl_cmd_del_server(struct sockaddr_qrtr *from,
 		struct qrtr_server *old = xa_load(&node->servers, port);
 
 		/* Keep the record unless the role still owns the port. A late
-		 * DEL_SERVER from a closed role is dropped quietly; the role's
+		 * DEL_SERVER from a closed role is dropped quietly. The role's
 		 * DEL_CLIENT, queued after it, removes the record.
 		 */
 		if (old && old->service == QRTR_IMSDCM_SERVICE_ID &&

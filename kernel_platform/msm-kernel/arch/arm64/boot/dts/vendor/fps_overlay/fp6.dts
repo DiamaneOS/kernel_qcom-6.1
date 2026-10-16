@@ -14,7 +14,7 @@
 /*
  * pstore/ramoops: the inherited node sits under /soc with no reg, so the
  * upstream ramoops driver finds no memory and fails (-22). Describe it as a
- * dynamically placed reserved-memory region instead; the kernel allocates it
+ * dynamically placed reserved-memory region instead. The kernel allocates it
  * from free memory at boot, so it cannot overlap another carve-out. Sizes as
  * GrapheneOS ships on Pixels: 4 MiB, 2 MiB console, 2 MiB pmsg, no oops/panic
  * records and no ftrace (the console already holds a panic's output, and the

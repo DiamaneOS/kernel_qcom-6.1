@@ -118,7 +118,7 @@ static void privsw_read_errors_block(struct kunit *test)
 
 static void privsw_debounce_favours_privacy(struct kunit *test)
 {
-	/* Down applies at once; up only once settled. */
+	/* Down applies at once and up only once settled. */
 	KUNIT_EXPECT_TRUE(test, privsw_core_apply_now(true, false));
 	KUNIT_EXPECT_TRUE(test, privsw_core_apply_now(true, true));
 	KUNIT_EXPECT_FALSE(test, privsw_core_apply_now(false, false));

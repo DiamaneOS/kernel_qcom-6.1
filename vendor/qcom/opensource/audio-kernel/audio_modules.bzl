@@ -290,7 +290,7 @@ audio_modules.register(
     srcs = ["lpass-bt-swr.c"]
 )
 # >>>> ASOC/CODECS/LPASS-CDC MODULES <<<<
-# DiamaneOS mic floor tests (KUnit). No target lists them; run them on demand.
+# DiamaneOS mic floor tests (KUnit). No target lists them. Run them on demand.
 audio_modules.register(
     name = "lpass_cdc_privsw_test_dlkm",
     path = ASOC_CODECS_LPASS_CDC_PATH,

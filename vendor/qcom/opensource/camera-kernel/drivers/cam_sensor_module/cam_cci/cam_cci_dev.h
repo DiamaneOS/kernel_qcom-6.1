@@ -319,7 +319,7 @@ struct cam_cci_ctrl {
 		struct cam_cci_gpio_cfg gpio_cfg;
 	} cfg;
 	bool is_probing;
-	/* Camera floor: a write the kernel issues itself; not filtered again. */
+	/* Camera floor: a write the kernel issues itself, not filtered again. */
 	bool privsw_internal;
 };
 

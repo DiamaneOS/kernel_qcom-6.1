@@ -876,7 +876,7 @@ int wcd9378_mbhc_micb_adjust_voltage(struct snd_soc_component *component,
 
 	mutex_lock(&wcd9378->micb_lock);
 
-	/* Mic floor: no bias while blocked; the refcounts restore it later. */
+	/* Mic floor: no bias while blocked. The refcounts restore it later. */
 	if (wcd9378->privsw_blocked) {
 		mutex_unlock(&wcd9378->micb_lock);
 		return 0;
@@ -2435,7 +2435,7 @@ EXPORT_SYMBOL_GPL(wcd9378_micbias_control);
  * switch blocks the microphones no mic bias is on: wcd9378_micbias_control()
  * keeps counting requests but does not power a bias, and this turns off the
  * ones that are on. The analog mics then have no supply. Unblocking powers
- * again the biases the counts ask for; the LPASS mute lifts later.
+ * again the biases the counts ask for. The LPASS mute lifts later.
  */
 static void wcd9378_privsw_bias(struct wcd9378_priv *wcd9378, bool block)
 {

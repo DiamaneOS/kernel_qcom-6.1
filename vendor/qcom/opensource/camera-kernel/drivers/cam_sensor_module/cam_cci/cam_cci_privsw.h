@@ -19,7 +19,7 @@ void cam_cci_privsw_remove(struct cci_device *cci_dev);
 
 /*
  * Before a userspace write: 0 to send it (with *copy, if set, holding the
- * values to send instead; the caller frees it), 1 to drop it and report
+ * values to send instead, which the caller frees), 1 to drop it and report
  * success, <0 on error.
  */
 int cam_cci_privsw_filter(struct cci_device *cci_dev, struct cam_cci_ctrl *ctrl,

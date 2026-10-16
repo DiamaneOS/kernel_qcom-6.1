@@ -2,11 +2,11 @@
 /*
  * Copyright (C) 2026 The DiamaneOS Project
  *
- * CDM reach probe, test builds only (CONFIG_SPECTRA_CDM_REACH_PROBE; the
- * release configuration never sets it and an image check refuses a
- * camera.ko that contains it).
+ * CDM reach probe, test builds only (CONFIG_SPECTRA_CDM_REACH_PROBE). The
+ * release configuration never sets it, and an image check refuses a
+ * camera.ko that contains it.
  *
- * Question (KERNEL-PRIVACY.md, Q1): the camera HAL's command buffers run on
+ * Question: the camera HAL's command buffers run on
  * the TFE's real-time CDM unchecked. The CDM addresses registers relative to
  * the TFE wrapper (0xac62000). Can a CHANGE_BASE reach a block outside it,
  * the CCI (0xac15000/0xac16000) in particular?
@@ -18,8 +18,8 @@
  *   echo 1        > /sys/module/camera/parameters/cdm_reach_probe_arm
  * At the next TFE configuration the kernel appends one command buffer from
  * its own memory: CHANGE_BASE <base>, REG_RANDOM {offset, value},
- * CHANGE_BASE 0. It logs the register at <phys> (0: none; only for clocked
- * blocks) before, and 100 ms after. An AHB error is reported by the CDM
+ * CHANGE_BASE 0. It logs the register at <phys> (0 for none, clocked blocks
+ * only) before, and 100 ms after. An AHB error is reported by the CDM
  * driver's own error dump (last_ahb_err_addr).
  */
 

@@ -53,7 +53,7 @@ static inline u32 privsw_core_enforced(const struct privsw_core *c)
 
 /*
  * The one policy write: a decimal mask of enum privsw_sensor bits. Accepted
- * once; any later write fails with -EPERM, whatever it holds. A malformed
+ * once. Any later write fails with -EPERM, whatever it holds. A malformed
  * write fails with -EINVAL and does not seal, so the policy stays "all".
  */
 static inline int privsw_core_seal(struct privsw_core *c, const char *buf,
@@ -92,7 +92,7 @@ static inline bool privsw_core_level_down(int level, int blocking_value)
 
 /*
  * Debounce, asymmetric in favour of privacy: a move into the blocking
- * position applies at once; a move out of it only once the level has been
+ * position applies at once, but a move out of it only once the level has been
  * stable for the debounce time (the caller re-reads then and asks again with
  * settled = true).
  */

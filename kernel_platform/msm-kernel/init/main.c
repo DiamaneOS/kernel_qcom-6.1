@@ -906,9 +906,9 @@ void __init __weak arch_call_rest_init(void)
 
 /*
  * Parameters the kernel does not use are passed to init, as arguments or as
- * environment strings. They can carry device identifiers (the Fairphone 6
- * bootloader passes the Wi-Fi MAC address this way), so the kernel log shows
- * their names only, never their values.
+ * environment strings. They can carry device identifiers (a bootloader can
+ * pass the Wi-Fi MAC address this way), so the kernel log shows their names
+ * only, never their values.
  */
 static int param_name_len(const char *param)
 {
@@ -1109,7 +1109,7 @@ static void __init copy_cmdline_names(char *d, const char *s, bool modules_only)
 	*d = '\0';
 }
 
-/* What /proc/cmdline shows once init runs; set up below. */
+/* What /proc/cmdline shows once init runs. Set up below. */
 static char *names_command_line __ro_after_init;
 
 /*
@@ -1117,8 +1117,8 @@ static char *names_command_line __ro_after_init;
  * space, and prepare the copy /proc/cmdline shows from init on: names only,
  * except the values of module options, which Android's modprobe reads from
  * /proc/cmdline. The kernel has used every other value by then, and the
- * bootloader's values can carry device identifiers (the Fairphone 6 passes
- * the Wi-Fi MAC address), which bug reports would copy. Call it after the
+ * bootloader's values can carry device identifiers (some pass the Wi-Fi MAC
+ * address), which bug reports would copy. Call it after the
  * command line has been parsed, when the environment is complete.
  */
 static void __init print_kernel_cmdline_names(const char *cmdline)
@@ -1769,7 +1769,7 @@ static int __ref kernel_init(void *unused)
 
 	/*
 	 * The initcalls and do_sysctl_args() have read their parameters from
-	 * saved_command_line; user space gets the names-only copy.
+	 * saved_command_line. User space gets the names-only copy.
 	 */
 	if (names_command_line)
 		saved_command_line = names_command_line;

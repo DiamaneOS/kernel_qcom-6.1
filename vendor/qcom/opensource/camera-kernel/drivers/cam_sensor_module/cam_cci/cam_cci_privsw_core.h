@@ -9,11 +9,11 @@
  *
  * Model: a CCI write is a run of bytes, each landing on one sensor register.
  * Writes are filtered byte by byte:
- * - test-pattern registers: CamX's value is remembered (to restore it when
- *   the switch moves back); while blocked the byte that reaches the sensor is
- *   the forced pattern;
- * - re-addressing registers (CCI address control): refused while blocked, so
- *   a sensor cannot leave the address the filter knows;
+ * - Test-pattern registers: CamX's value is remembered (to restore it when
+ *   the switch moves back). While blocked, the byte that reaches the sensor
+ *   is the forced pattern.
+ * - Re-addressing registers (CCI address control): refused while blocked, so
+ *   a sensor cannot leave the address the filter knows.
  * - Samsung's indirect window (0x6028 page, 0x602A pointer, 0x6F12 data)
  *   is followed, so writes through it into page 0x4000, the standard
  *   register space, are filtered the same way.
@@ -68,7 +68,7 @@ enum cci_privsw_verdict {
  * - OV13B10: 0x5080 bit 7 enables the test pattern. Only the enable bit is
  *   forced: with it set the sensor sends a synthetic pattern instead of the
  *   scene, whatever the other bits select (mainline names only colour-bar
- *   types; a black variant is to be confirmed from the CamX sensor module).
+ *   types).
  * - 0x0107 and 0x0109 are the CCS CCI address control registers.
  */
 static inline const struct cci_privsw_sensor *cci_privsw_find(u16 sid)

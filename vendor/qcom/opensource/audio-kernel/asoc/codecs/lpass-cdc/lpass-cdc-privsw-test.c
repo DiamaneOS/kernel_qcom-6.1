@@ -3,7 +3,7 @@
  * Copyright (C) 2026 The DiamaneOS Project
  *
  * KUnit tests for the LPASS codec's mic floor filter (lpass-cdc-privsw.h).
- * Built only with CONFIG_LPASS_CDC_PRIVSW_KUNIT_TEST; needs no hardware.
+ * Built only with CONFIG_LPASS_CDC_PRIVSW_KUNIT_TEST. Needs no hardware.
  */
 
 #include <kunit/test.h>

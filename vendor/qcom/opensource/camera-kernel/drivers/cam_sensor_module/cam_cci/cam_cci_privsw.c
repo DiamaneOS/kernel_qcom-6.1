@@ -6,13 +6,13 @@
  * cam_cci_core_cfg(), whichever camera subdevice sends it and whichever
  * slave address it names. While the privacy switch blocks the cameras
  * (armed at boot, switch down):
- * - writes to a known sensor's test-pattern registers reach the sensor as
- *   the forced pattern; CamX's own values are remembered;
- * - writes that would re-address a sensor, and general-call writes, are
- *   dropped (CamX sees success);
- * - after every userspace write to a known sensor the pattern is written
- *   again, so a reset or a new mode cannot clear it;
- * - on the transition every sensor in use gets the pattern at once, and when
+ * - Writes to a known sensor's test-pattern registers reach the sensor as
+ *   the forced pattern. CamX's own values are remembered.
+ * - Writes that would re-address a sensor, and general-call writes, are
+ *   dropped (CamX sees success).
+ * - After every userspace write to a known sensor the pattern is written
+ *   again, so a reset or a new mode cannot clear it.
+ * - On the transition every sensor in use gets the pattern at once, and when
  *   the switch moves back CamX's own values are written back.
  * Streams keep running with the same mode and timing, so CamX and apps see
  * frames, not errors. Unblocked, the filter only remembers values.
@@ -240,7 +240,7 @@ static int cci_privsw_event(struct notifier_block *nb, unsigned long action,
 	struct cci_device *cci_dev;
 	bool block = action == PRIVSW_BLOCK;
 
-	/* Blocking: filter first, then write; unblocking: stop filtering, then restore. */
+	/* Blocking filters first, then writes. Unblocking stops filtering, then restores. */
 	atomic_set(&cci_privsw_blocked, block);
 	mutex_lock(&cci_privsw_devices_lock);
 	list_for_each_entry(cci_dev, &cci_privsw_devices, privsw_node)

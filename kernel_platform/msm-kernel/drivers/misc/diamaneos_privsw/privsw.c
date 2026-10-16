@@ -11,9 +11,9 @@
  *   line, so GPIO character-device requests for it fail with EBUSY.
  * - The blocking position is the logical GPIO value in
  *   "de.diamaneos,blocking-value" (default 1). EV_SW reports the logical value.
- * - A move into the blocking position applies at once; a move out of it once
- *   the level has been stable for the debounce time. A failed read counts as
- *   blocking. Before the first read everything is blocked.
+ * - A move into the blocking position applies at once. A move out of it
+ *   applies once the level has been stable for the debounce time. A failed
+ *   read counts as blocking. Before the first read everything is blocked.
  * - The policy (which sensors the switch blocks) is written once, early in
  *   boot, to /sys/kernel/privacy_switch/policy and sealed: later writes fail.
  *   Until it is written, every sensor is armed (fail closed).

@@ -13,7 +13,7 @@
 #include "cam_cdm_intf_api.h"
 
 #if IS_ENABLED(CONFIG_SPECTRA_CDM_REACH_PROBE)
-/* Appends the probe to @cdm_cmd (with @count entries) once armed; returns the new count. */
+/* Appends the probe to @cdm_cmd (with @count entries) once armed. Returns the new count. */
 uint32_t cam_tfe_cdm_reach_probe(struct cam_cdm_bl_request *cdm_cmd,
 	uint32_t count, uint32_t max, int32_t smmu_hdl);
 #else

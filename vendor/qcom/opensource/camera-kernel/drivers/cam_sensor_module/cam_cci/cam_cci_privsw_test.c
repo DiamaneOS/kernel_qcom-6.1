@@ -3,7 +3,7 @@
  * Copyright (C) 2026 The DiamaneOS Project
  *
  * KUnit tests for the camera floor's CCI filter (cam_cci_privsw_core.h).
- * Not part of camera.ko; run on demand (KERNEL-PRIVACY.md).
+ * Not part of camera.ko. Run on demand.
  */
 
 #include <kunit/test.h>
@@ -88,7 +88,7 @@ static void privsw_cci_ov_enable_bit(struct kunit *test)
 {
 	struct cci_privsw_state st = {};
 
-	/* CamX's bits stay; bit 7 (pattern on) is forced. */
+	/* CamX's bits stay and bit 7 (pattern on) is forced. */
 	KUNIT_EXPECT_EQ(test, entry(test, 0x36, &st, true, 0x5080, 1, 0x0c, V_CHANGED), 0x8cu);
 	KUNIT_EXPECT_EQ(test, st.shadow[0], 0x0c);
 	entry(test, 0x36, &st, true, 0x5081, 1, 0x00, V_PASS);

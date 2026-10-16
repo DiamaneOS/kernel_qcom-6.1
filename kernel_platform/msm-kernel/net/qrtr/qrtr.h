@@ -8,7 +8,7 @@
 #include <linux/kconfig.h>
 
 /* Bytes actually consumed by the control dispatchers. Check before tracing or
- * reading fields; reused receive buffers are not an input-validation boundary.
+ * reading fields. Reused receive buffers are not an input-validation boundary.
  */
 static inline size_t qrtr_ctrl_min_size(u32 command)
 {
@@ -37,7 +37,7 @@ static inline size_t qrtr_ctrl_min_size(u32 command)
 #if IS_ENABLED(CONFIG_QRTR_IMSDCM_OWNERSHIP)
 #define QRTR_IMSDCM_SERVICE_ID 0x302
 /* Downstream role allocation at the top of the ordinary ephemeral range.
- * Service discovery still advertises this port; it is not a modem wire requirement.
+ * Service discovery still advertises this port. It is not a modem wire requirement.
  */
 #define QRTR_IMSDCM_PORT 0x7fff
 bool qrtr_imsdcm_port_owned(u32 port);

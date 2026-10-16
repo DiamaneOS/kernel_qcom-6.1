@@ -14,7 +14,7 @@
 #include <linux/types.h>
 #include "lpass-cdc-registers.h"
 
-/* The macro ids of lpass-cdc.h; lpass-cdc.c checks that they match. */
+/* The macro ids of lpass-cdc.h. lpass-cdc.c checks that they match. */
 #define LPASS_CDC_PRIVSW_TX_MACRO	0
 #define LPASS_CDC_PRIVSW_VA_MACRO	3
 
