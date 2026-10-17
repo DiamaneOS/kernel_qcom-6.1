@@ -791,7 +791,7 @@
 			compatible = "qcom,msm-cam-smmu-cb";
 			iommus = <&apps_smmu 0x08A0 0x020>,
 				<&apps_smmu 0x0880 0x020>;
-			qcom,iommu-faults = "fatal";
+			qcom,iommu-faults = "non-fatal";
 			qcom,iommu-dma-addr-pool = <0x100000 0xffe00000>;
 			qcom,iova-best-fit;
 			dma-coherent;
@@ -818,7 +818,7 @@
 				<&apps_smmu 0x1860 0x00A0>,
 				<&apps_smmu 0x18E0 0x00A0>,
 				<&apps_smmu 0x1900 0x0000>;
-			qcom,iommu-faults = "fatal";
+			qcom,iommu-faults = "non-fatal";
 			cam-smmu-label = "icp";
 			qcom,iommu-dma-addr-pool = <0x14c00000 0xee300000>;
 			qcom,iova-best-fit;
@@ -876,7 +876,7 @@
 			compatible = "qcom,msm-cam-smmu-cb";
 			iommus = <&apps_smmu 0x1800 0x000>;
 			cam-smmu-label = "rt-cdm";
-			qcom,iommu-faults = "fatal";
+			qcom,iommu-faults = "non-fatal";
 			qcom,iommu-dma-addr-pool = <0x100000 0xffe00000>;
 			qcom,iova-best-fit;
 			multiple-client-devices;
@@ -897,7 +897,7 @@
 			compatible = "qcom,msm-cam-smmu-cb";
 			iommus = <&apps_smmu 0x1920 0x000>,
 				<&apps_smmu 0x1940 0x000>;
-			qcom,iommu-faults = "fatal";
+			qcom,iommu-faults = "non-fatal";
 			multiple-client-devices;
 			qcom,iommu-dma-addr-pool = <0x100000 0xffe00000>;
 			qcom,iova-best-fit;
