@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# DiamaneOS options on top of each defconfig. The tools pass the fragment to every kernel_build
+# of the FP6 build with --defconfig_fragment=//diamaneos:diamaneos_defconfig.
+
+exports_files(["diamaneos_defconfig"])
