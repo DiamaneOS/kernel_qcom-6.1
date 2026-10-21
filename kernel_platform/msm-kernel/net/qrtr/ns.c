@@ -16,6 +16,7 @@
 #include <net/sock.h>
 
 #include "qrtr.h"
+#include "imsdcm.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/qrtr.h>

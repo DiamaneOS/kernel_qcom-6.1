@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 obj-$(CONFIG_QRTR) += qrtr.o
 qrtr-y	:= af_qrtr.o ns.o
+qrtr-y	+= imsdcm.o
 
 obj-$(CONFIG_QRTR_SMD) += qrtr-smd.o
 qrtr-smd-y	:= smd.o
