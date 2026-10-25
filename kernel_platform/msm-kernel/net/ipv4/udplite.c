@@ -11,6 +11,7 @@
 #define pr_fmt(fmt) "UDPLite: " fmt
 
 #include <linux/export.h>
+#include <linux/icmp.h>
 #include <linux/proc_fs.h>
 #include "udp_impl.h"
 
@@ -32,6 +33,9 @@ static int udplite_rcv(struct sk_buff *skb)
 
 static int udplite_err(struct sk_buff *skb, u32 info)
 {
+	udp_err_update_exception(dev_net(skb->dev), skb, icmp_hdr(skb)->type,
+				 icmp_hdr(skb)->code, info, IPPROTO_UDPLITE);
+
 	return __udp4_lib_err(skb, info, &udplite_table);
 }
 

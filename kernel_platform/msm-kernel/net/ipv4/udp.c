@@ -822,19 +822,19 @@ out:
 	return 0;
 }
 
-static void udp_err_update_exception(struct net *net, struct sk_buff *skb,
-				     int type, int code, u32 info)
+void udp_err_update_exception(struct net *net, struct sk_buff *skb,
+			      int type, int code, u32 info, u8 protocol)
 {
 	if (type == ICMP_DEST_UNREACH && code == ICMP_FRAG_NEEDED)
-		ipv4_update_pmtu(skb, net, info, 0, IPPROTO_UDP);
+		ipv4_update_pmtu(skb, net, info, 0, protocol);
 	else if (type == ICMP_REDIRECT)
-		ipv4_redirect(skb, net, 0, IPPROTO_UDP);
+		ipv4_redirect(skb, net, 0, protocol);
 }
 
 int udp_err(struct sk_buff *skb, u32 info)
 {
 	udp_err_update_exception(dev_net(skb->dev), skb, icmp_hdr(skb)->type,
-				 icmp_hdr(skb)->code, info);
+				 icmp_hdr(skb)->code, info, IPPROTO_UDP);
 
 	return __udp4_lib_err(skb, info, &udp_table);
 }

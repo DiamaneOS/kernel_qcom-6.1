@@ -8,6 +8,8 @@
 
 int __udp4_lib_rcv(struct sk_buff *, struct udp_table *, int);
 int __udp4_lib_err(struct sk_buff *, u32, struct udp_table *);
+void udp_err_update_exception(struct net *net, struct sk_buff *skb,
+			      int type, int code, u32 info, u8 protocol);
 
 int udp_v4_get_port(struct sock *sk, unsigned short snum);
 void udp_v4_rehash(struct sock *sk);
