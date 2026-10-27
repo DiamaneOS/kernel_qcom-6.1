@@ -11,6 +11,75 @@
 #include "cam_res_mgr_api.h"
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
+#include "cam_flash_torch.h"
+
+/*
+ * Flashlight strength. The HAL asks for one torch current at every level, so
+ * cameraserver writes the level to the torch_level parameter. The lock also
+ * guards the torch that the last FIRELOW lit and the currents it asked for,
+ * so a new level applies at once.
+ */
+static DEFINE_MUTEX(cam_flash_torch_lock);
+static unsigned int cam_flash_torch_level = CAM_FLASH_TORCH_LEVEL_DEFAULT;
+static struct cam_flash_ctrl *cam_flash_torch_lit;
+static uint32_t cam_flash_torch_hal_ma[CAM_FLASH_MAX_LED_TRIGGERS];
+
+static void cam_flash_torch_fire_locked(struct cam_flash_ctrl *fctrl)
+{
+	struct cam_flash_private_soc *soc_private = fctrl->soc_info.soc_private;
+	uint32_t curr = 0;
+	int i;
+
+	for (i = 0; i < fctrl->torch_num_sources; i++) {
+		if (fctrl->torch_trigger[i])
+			curr = cam_flash_torch_current(cam_flash_torch_level,
+				cam_flash_torch_hal_ma[i],
+				soc_private->torch_max_current[i]);
+		CAM_DBG(CAM_FLASH, "Led_Torch[%d]: Current: %d", i, curr);
+		cam_res_mgr_led_trigger_event(fctrl->torch_trigger[i], curr);
+	}
+}
+
+/*
+ * Before the torch LEDs go off (NULL: the flash devices share them) or before
+ * fctrl goes away.
+ */
+static void cam_flash_torch_forget(struct cam_flash_ctrl *fctrl)
+{
+	mutex_lock(&cam_flash_torch_lock);
+	if (!fctrl || cam_flash_torch_lit == fctrl)
+		cam_flash_torch_lit = NULL;
+	mutex_unlock(&cam_flash_torch_lock);
+}
+
+static int cam_flash_torch_level_set(const char *val,
+	const struct kernel_param *kp)
+{
+	unsigned int level;
+	int rc;
+
+	rc = kstrtouint(val, 10, &level);
+	if (rc)
+		return rc;
+	if (!cam_flash_torch_level_valid(level))
+		return -EINVAL;
+
+	mutex_lock(&cam_flash_torch_lock);
+	cam_flash_torch_level = level;
+	if (cam_flash_torch_lit)
+		cam_flash_torch_fire_locked(cam_flash_torch_lit);
+	mutex_unlock(&cam_flash_torch_lock);
+	return 0;
+}
+
+static const struct kernel_param_ops cam_flash_torch_level_ops = {
+	.set = cam_flash_torch_level_set,
+	.get = param_get_uint,
+};
+module_param_cb(torch_level, &cam_flash_torch_level_ops,
+	&cam_flash_torch_level, 0644);
+MODULE_PARM_DESC(torch_level,
+	"Flashlight strength 1 to 4, 3 keeps the HAL's torch current");
 
 int cam_flash_led_prepare(struct led_trigger *trigger, int options,
 	int *max_current, bool is_wled)
@@ -382,20 +451,12 @@ static int cam_flash_ops(struct cam_flash_ctrl *flash_ctrl,
 		flash_ctrl->soc_info.soc_private;
 
 	if (op == CAMERA_SENSOR_FLASH_OP_FIRELOW) {
-		for (i = 0; i < flash_ctrl->torch_num_sources; i++) {
-			if (flash_ctrl->torch_trigger[i]) {
-				max_current = soc_private->torch_max_current[i];
-				if (flash_data->led_current_ma[i] <=
-					max_current)
-					curr = flash_data->led_current_ma[i];
-				else
-					curr = max_current;
-			}
-			CAM_DBG(CAM_FLASH, "Led_Torch[%d]: Current: %d",
-				i, curr);
-			cam_res_mgr_led_trigger_event(
-				flash_ctrl->torch_trigger[i], curr);
-		}
+		mutex_lock(&cam_flash_torch_lock);
+		for (i = 0; i < CAM_FLASH_MAX_LED_TRIGGERS; i++)
+			cam_flash_torch_hal_ma[i] = flash_data->led_current_ma[i];
+		cam_flash_torch_lit = flash_ctrl;
+		cam_flash_torch_fire_locked(flash_ctrl);
+		mutex_unlock(&cam_flash_torch_lock);
 	} else if ((op == CAMERA_SENSOR_FLASH_OP_FIREHIGH) ||
 		(op == CAMERA_SENSOR_FLASH_OP_FIREDURATION)) {
 		for (i = 0; i < flash_ctrl->flash_num_sources; i++) {
@@ -460,6 +521,7 @@ int cam_flash_off(struct cam_flash_ctrl *flash_ctrl)
 		return -EINVAL;
 	}
 	CAM_DBG(CAM_FLASH, "Flash OFF Triggered");
+	cam_flash_torch_forget(NULL);
 	if (flash_ctrl->switch_trigger)
 		cam_res_mgr_led_trigger_event(flash_ctrl->switch_trigger,
 			(enum led_brightness)LED_SWITCH_OFF);
@@ -502,6 +564,7 @@ static int cam_flash_high(
 		return -EINVAL;
 	}
 
+	cam_flash_torch_forget(NULL);
 	for (i = 0; i < flash_ctrl->torch_num_sources; i++)
 		if (flash_ctrl->torch_trigger[i])
 			cam_res_mgr_led_trigger_event(
@@ -526,6 +589,7 @@ static int cam_flash_duration(struct cam_flash_ctrl *fctrl,
 		return -EINVAL;
 	}
 
+	cam_flash_torch_forget(NULL);
 	for (i = 0; i < fctrl->torch_num_sources; i++)
 		if (fctrl->torch_trigger[i])
 			cam_res_mgr_led_trigger_event(
@@ -1958,6 +2022,7 @@ void cam_flash_shutdown(struct cam_flash_ctrl *fctrl)
 {
 	int rc;
 
+	cam_flash_torch_forget(fctrl);
 	if (fctrl->flash_state == CAM_FLASH_STATE_INIT)
 		return;
 
