@@ -76,6 +76,11 @@
 	fm_rtc6226: nq@64 {
 		compatible = "rtc6226";
 		reg = <0x64>;
+		/*
+		 * No FM radio driver or stack ships. An enabled node would keep
+		 * both supplies at their boot votes.
+		 */
+		status = "disabled";
 		fmint-gpio = <&tlmm 23 0>;
 		vdd-supply = <&L18B>;
 		rtc6226,vdd-supply-voltage = <2800000 2800000>;

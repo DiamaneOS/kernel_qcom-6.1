@@ -890,6 +890,12 @@
 
 	debugcc: clock-controller@0 {
 		compatible = "qcom,volcano-debugcc";
+		/*
+		 * Clock measurement for debugging. Its module does not ship, and an
+		 * enabled node would keep every clock controller it names from
+		 * releasing its boot votes, so the SoC would never reach deep sleep.
+		 */
+		status = "disabled";
 		qcom,apsscc = <&apsscc>;
 		qcom,camcc = <&camcc>;
 		qcom,dispcc = <&dispcc>;
