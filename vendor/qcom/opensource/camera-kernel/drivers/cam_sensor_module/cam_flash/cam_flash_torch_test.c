@@ -10,11 +10,15 @@
 
 #include "cam_flash_torch.h"
 
-static void torch_levels_set_the_current(struct kunit *test)
+static void torch_levels_scale_the_hal_request(struct kunit *test)
 {
-	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(1, 50, 500), 15U);
-	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(2, 50, 500), 30U);
-	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(3, 50, 500), 50U);
+	/* The FP6 HAL asks 100 mA on one channel, the switch shares it between two LEDs. */
+	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(1, 100, 500), 25U);
+	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(2, 100, 500), 50U);
+	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(3, 100, 500), 100U);
+	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(4, 100, 500), 300U);
+	/* Both channels driven: each keeps its own share. */
+	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(1, 50, 500), 12U);
 	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(4, 50, 500), 150U);
 }
 
@@ -27,6 +31,7 @@ static void torch_default_keeps_the_hal_request(struct kunit *test)
 static void torch_stays_within_the_led_maximum(struct kunit *test)
 {
 	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(4, 50, 100), 100U);
+	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(4, U32_MAX, 500), 500U);
 	KUNIT_EXPECT_EQ(test, cam_flash_torch_current(1, 50, 0), 0U);
 }
 
@@ -47,7 +52,7 @@ static void torch_invalid_levels(struct kunit *test)
 }
 
 static struct kunit_case cam_flash_torch_cases[] = {
-	KUNIT_CASE(torch_levels_set_the_current),
+	KUNIT_CASE(torch_levels_scale_the_hal_request),
 	KUNIT_CASE(torch_default_keeps_the_hal_request),
 	KUNIT_CASE(torch_stays_within_the_led_maximum),
 	KUNIT_CASE(torch_led_off_stays_off),

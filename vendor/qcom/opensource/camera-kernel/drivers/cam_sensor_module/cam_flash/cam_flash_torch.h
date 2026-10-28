@@ -23,18 +23,20 @@ static inline bool cam_flash_torch_level_valid(u32 level)
 }
 
 /*
- * Current for one torch LED in mA. The default level keeps the HAL's request,
- * the others replace it for the LEDs the HAL turned on. Never above max_ma.
+ * Current for one torch channel in mA: the HAL's request scaled by the level
+ * (a quarter, a half, as asked, three times). The torch switch shares the sum
+ * of its channels evenly between its LEDs, and the HAL may drive only one
+ * channel, so scaling keeps each LED at the level's share whichever it drives.
+ * Never above max_ma.
  */
 static inline u32 cam_flash_torch_current(u32 level, u32 hal_ma, u32 max_ma)
 {
-	static const u32 level_ma[CAM_FLASH_TORCH_LEVEL_MAX] = { 15, 30, 0, 150 };
-	u32 ma = hal_ma;
+	static const u32 level_quarters[CAM_FLASH_TORCH_LEVEL_MAX] = { 1, 2, 4, 12 };
+	u64 ma = hal_ma;
 
-	if (hal_ma && level != CAM_FLASH_TORCH_LEVEL_DEFAULT &&
-	    cam_flash_torch_level_valid(level))
-		ma = level_ma[level - 1];
-	return min(ma, max_ma);
+	if (cam_flash_torch_level_valid(level))
+		ma = (u64)hal_ma * level_quarters[level - 1] / 4;
+	return min_t(u64, ma, max_ma);
 }
 
 #endif /* _CAM_FLASH_TORCH_H_ */
